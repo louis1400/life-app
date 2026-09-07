@@ -1,0 +1,4 @@
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
+export const items = sqliteTable("archive_items", {
+ id:text("id").primaryKey(), owner:text("owner").notNull(), title:text("title").notNull(), url:text("url").notNull().default(""), kind:text("kind").notNull(), note:text("note").notNull().default(""), tags:text("tags").notNull().default("[]"), destinations:text("destinations").notNull().default("[]"), fileKey:text("file_key"), fileName:text("file_name"), mime:text("mime"), size:integer("size").notNull().default(0), content:text("content").notNull().default(""), createdAt:text("created_at").notNull(), updatedAt:text("updated_at").notNull(),
+},table=>[index("archive_owner_created").on(table.owner,table.createdAt),index("archive_owner_url").on(table.owner,table.url)]);

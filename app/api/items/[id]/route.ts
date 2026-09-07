@@ -1,0 +1,8 @@
+import { ApiError, bucket, db, fail, owner, serialize, validate } from '@/lib/archive-server';
+type Context={params:Promise<{id:string}>};
+export async function PATCH(request:Request,context:Context){try{
+ const user=owner(request),{id}=await context.params,value=validate(await request.json());const old=await db().prepare('SELECT * FROM archive_items WHERE id=? AND owner=?').bind(id,user).first();if(!old)throw new ApiError('Item not found.',404);if(!value.url&&!old.file_key)throw new ApiError('A bookmarked item needs a source link.');
+ if(value.url){const duplicate=await db().prepare('SELECT id FROM archive_items WHERE owner=? AND url=? AND id!=? LIMIT 1').bind(user,value.url,id).first();if(duplicate)throw new ApiError('This link is already saved in another item.',409);}
+ await db().prepare('UPDATE archive_items SET title=?,url=?,kind=?,note=?,tags=?,destinations=?,updated_at=? WHERE id=? AND owner=?').bind(value.title,value.url,value.kind,value.note,JSON.stringify(value.tags),JSON.stringify(value.destinations),new Date().toISOString(),id,user).run();const row=await db().prepare('SELECT * FROM archive_items WHERE id=? AND owner=?').bind(id,user).first();return Response.json({item:serialize(row)});
+ }catch(e){return fail(e);}}
+export async function DELETE(request:Request,context:Context){try{const user=owner(request),{id}=await context.params;const row=await db().prepare('SELECT * FROM archive_items WHERE id=? AND owner=?').bind(id,user).first();if(!row)throw new ApiError('Item not found.',404);if(row.file_key)await bucket().delete(String(row.file_key));await db().prepare('DELETE FROM archive_items WHERE id=? AND owner=?').bind(id,user).run();return Response.json({ok:true});}catch(e){return fail(e);}}
