@@ -10,7 +10,7 @@ export function owner(request:Request){
  return id;
 }
 export function fail(e:unknown){if(e instanceof ApiError)return Response.json({error:e.message},{status:e.status});console.error('Archive operation failed',e);return Response.json({error:'Your archive is temporarily unavailable. Please try again; your unsaved input is still here.'},{status:503});}
-export function serialize(row:any){return {id:row.id,title:row.title,url:row.url,kind:row.kind,note:row.note,tags:JSON.parse(row.tags),destinations:JSON.parse(row.destinations),fileName:row.file_name,mime:row.mime,size:row.size,content:row.content,createdAt:row.created_at,updatedAt:row.updated_at,hasFile:!!row.file_key};}
+export function serialize(row:any){return {id:row.id,title:row.title,url:row.url,kind:row.kind,note:row.note,tags:JSON.parse(row.tags),destinations:JSON.parse(row.destinations),fileName:row.file_name,mime:row.mime,size:row.size,content:row.content,createdAt:row.created_at,updatedAt:row.updated_at,hasFile:!!row.file_key||!!(row.drive_file_id&&row.file_name),storage:row.drive_file_id?"google-drive":"legacy",driveUrl:row.drive_url||null};}
 export function validate(raw:any){
  if(!raw||typeof raw!=='object')throw new ApiError('Please enter item details.');
  const title=typeof raw.title==='string'?raw.title.trim():'';

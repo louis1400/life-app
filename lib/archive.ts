@@ -1,6 +1,6 @@
 export const kinds = ["Article", "Video", "GIF", "Meme", "Image", "Audio", "Document", "Link"] as const;
 export const destinations = ["Reading", "Watch later", "Reactions", "Study", "Recipes", "Shopping", "Places"];
-export type Item = { id:string; title:string; url:string; kind:string; note:string; tags:string[]; destinations:string[]; fileName:string|null; mime:string|null; size:number; content:string; createdAt:string; updatedAt:string; hasFile:boolean };
+export type Item = { id:string; title:string; url:string; kind:string; note:string; tags:string[]; destinations:string[]; fileName:string|null; mime:string|null; size:number; content:string; createdAt:string; updatedAt:string; hasFile:boolean; storage:"google-drive"|"legacy"; driveUrl:string|null };
 export function normalizeUrl(value:string) {
  if(!value.trim()) return "";
  const u=new URL(value.trim());
