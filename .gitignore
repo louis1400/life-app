@@ -1,0 +1,9 @@
+.DS_Store
+*.zip
+node_modules/
+.env*
+!.env.example
+dist/server/
+dist/.openai/
+*.pdf
+private-readings/
