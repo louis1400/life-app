@@ -12,7 +12,11 @@
   const week1 = 'https://canvas.eur.nl/courses/57822/pages/preparation-week-1?module_item_id=1657310';
   const week2 = 'https://canvas.eur.nl/courses/57822/pages/preparation-week-2?module_item_id=1657316';
   const publisher = 'https://www.routledge.com/A-New-Modern-Philosophy-The-Inclusive-Anthology-of-Primary-Sources/Marshall-Sreedhar/p/book/9781138484337';
-  const catalogue = 'https://eur.on.worldcat.org/search?queryString=A%20New%20Modern%20Philosophy';
+  const catalogue = 'https://ebookcentral-proquest-com.eur.idm.oclc.org/lib/eur/detail.action?docID=5725896';
+  const pages = {18:658,12:482,21:689};
+  const saved = new Map();
+  let storageError = '';
+  let storageReady = false;
   const chapters = {18: {author:'Montesquieu',week:1},12:{author:'Isaac Newton',week:2},21:{author:'Émilie Du Châtelet',week:2}};
   function element(tag, content, className) { const e = document.createElement(tag); if(content !== undefined) e.textContent = content; if(className) e.className = className; return e; }
   function link(name, href) { const e = element('a', name); e.href = href; if(href.startsWith('https:')) { e.target = '_blank'; e.rel = 'noopener noreferrer'; } return e; }
@@ -24,14 +28,45 @@
     const list = element('ul');
     for(const [name,url] of [['Week 1: Hume Parts 1–3; anthology chapter 18',week1],['Week 2: Hume Parts 4–6; anthology chapters 12 and 21',week2]]) {const li=element('li');li.append(link(name,url));list.append(li);}
     box.append(list,element('h2','Hume’s complete text'),element('p','David Hume, Dialogues Concerning Natural Religion. Project Gutenberg ebook 4583. Produced by Col Choat; HTML version by Al Haines. The preface and all twelve parts are included. Text is reproduced from the source without summaries or modernization; its paragraph breaks are retained. This edition has no matching print-page numbering.'));
-    box.append(link('Open the original ebook',source),element('h2','A New Modern Philosophy'),element('p','Eugene Marshall and Susanne Sreedhar (eds.), A New Modern Philosophy: The Inclusive Anthology of Primary Sources, first edition, Routledge, 2019. The assigned chapters are identified, but their text has not been added. A later edition or another translation has not been substituted.'));
+    box.append(link('Open the original ebook',source),element('h2','A New Modern Philosophy'),element('p','Eugene Marshall and Susanne Sreedhar (eds.), A New Modern Philosophy: The Inclusive Anthology of Primary Sources, first edition, Routledge, 2019. The assigned chapters link directly to EUR’s Ebook Central copy. Add the chapter PDFs downloaded there to read them inside this app. Saved PDFs belong to your signed-in account. A later edition or another translation has not been substituted.'));
     text.append(box);
     const licence=element('details',undefined,'licence');licence.append(element('summary','Project Gutenberg notice and full licence'));licence.append(element('div',book.notice+'\n\n'+book.licence,'source-text'));text.append(licence);
   }
   function showAnthology(number) {
     const chapter=chapters[number];context.textContent=`Week ${chapter.week} · Lecture reading`;label.textContent='A NEW MODERN PHILOSOPHY · 2019 EDITION';title.textContent=`Chapter ${number}`;note.textContent=chapter.author;
-    const panel=element('section',undefined,'access-panel');panel.append(element('h2','Text still needed'),element('p','This chapter is assigned, but a copy has not been added to your reading library. You need access to the 2019 edition to read the exact selection here.'));
-    const links=element('div',undefined,'resource-links');links.append(link('Check EUR catalogue',catalogue),link('Publisher’s book details',publisher));panel.append(links);text.append(panel);
+    const panel=element('section',undefined,'access-panel');
+    panel.append(element('h2',saved.get(number)?'Your saved chapter':'Read the assigned chapter'));
+    const readingUrl = `https://ebookcentral-proquest-com.eur.idm.oclc.org/lib/eur/reader.action?docID=5725896&ppg=${pages[number]}`;
+    const links=element('div',undefined,'resource-links');
+    links.append(link('Read through EUR',readingUrl),link('Get chapter PDF',catalogue));
+    panel.append(links);
+    if (saved.get(number)) {
+      const open=link('Open saved PDF',`/api/readings/${number}/pdf`);open.target='_blank';open.rel='noopener';
+      const download=link('Download saved PDF',`/api/readings/${number}/pdf?download=1`);download.setAttribute('download','');
+      links.prepend(open,download);
+      const frame=element('iframe',undefined,'pdf-reader');frame.title=`Chapter ${number}: ${chapter.author}`;frame.src=`/api/readings/${number}/pdf`;frame.setAttribute('sandbox','');
+      panel.append(frame);
+    } else panel.append(element('p','Download this chapter from the 2019 edition in Ebook Central, then add its PDF here. Ebook Central asks for a separate account when downloading.'));
+    const form=element('form',undefined,'pdf-import');
+    const fileLabel=element('label',saved.get(number)?'Replace chapter PDF':'Add chapter PDF');
+    const input=element('input');input.type='file';input.accept='application/pdf,.pdf';input.id=`chapter-file-${number}`;input.required=true;fileLabel.htmlFor=input.id;
+    const confirmLabel=element('label',undefined,'confirm-reading');const confirm=element('input');confirm.type='checkbox';confirm.required=true;
+    confirmLabel.append(confirm,document.createTextNode(`This is chapter ${number} (${chapter.author}) from the 2019 edition.`));
+    const button=element('button',saved.get(number)?'Replace saved PDF':'Save to my readings');button.type='submit';button.disabled=!storageReady;
+    const status=element('p',storageError || (storageReady?'Saved privately to your account. Maximum 12 MB.':'Checking your saved readings…'),'import-status');status.setAttribute('role','status');
+    form.append(fileLabel,input,confirmLabel,button,status);panel.append(form);text.append(panel);
+    form.addEventListener('submit',async event=>{
+      event.preventDefault();const file=input.files[0];if(!file)return;
+      if(file.size>12*1024*1024){status.textContent='Choose a chapter PDF smaller than 12 MB.';return;}
+      button.disabled=true;status.textContent='Saving your chapter…';
+      try {
+        if(new TextDecoder().decode(await file.slice(0,5).arrayBuffer())!=='%PDF-')throw new Error('Choose a valid PDF file.');
+        const response=await fetch(`/api/readings/${number}`,{method:'PUT',headers:{'Content-Type':'application/pdf'},body:file});
+        const result=await response.json();if(!response.ok)throw new Error(result.error || 'The PDF could not be saved.');
+        saved.set(number,true);updateBadges();
+        if(location.hash===`#anthology-${number}`){render();const message=document.querySelector('.import-status');if(message)message.textContent='Chapter saved. Open it here whenever you need it.';}
+      }catch(error){status.textContent=error.message || 'Saving failed. Your selected file is still here; try again.';button.disabled=false;}
+    });
     text.append(element('p','Eugene Marshall and Susanne Sreedhar (eds.), A New Modern Philosophy: The Inclusive Anthology of Primary Sources. Routledge, 2019.','citation'));
     text.append(link(`View Week ${chapter.week} assignment`,chapter.week===1?week1:week2));
   }
@@ -55,6 +90,23 @@
     document.getElementById('main-scroll').scrollTop=0;
     if(window.matchMedia('(max-width: 850px)').matches) {library.open=false;window.scrollTo(0,0);}
   }
-  render();
+  function updateBadges() {
+    for(const number of Object.keys(chapters)) {
+      const badge=document.querySelector(`[href="#anthology-${number}"] .needed`);
+      if(badge)badge.textContent=saved.get(Number(number))?'Saved PDF':'Read online';
+    }
+  }
+  async function loadSaved() {
+    try {
+      const response=await fetch('/api/readings',{cache:'no-store'});
+      if(!(response.headers.get('content-type')||'').includes('application/json'))throw new Error('PDF saving is available in the hosted app. You can read through EUR now.');
+      const result=await response.json();if(!response.ok)throw new Error(result.error || 'Saved readings are unavailable.');
+      for(const row of result.readings)saved.set(row.chapter,row.saved);
+      storageReady=true;
+    } catch(error) {storageError=error.message || 'Saved readings are unavailable. Please reload to try again.';}
+    updateBadges();
+    if(location.hash.startsWith('#anthology-'))render();
+  }
+  updateBadges();render();loadSaved();
   window.addEventListener('hashchange',()=>{render();document.getElementById('reading').focus({preventScroll:true});});
 })();
