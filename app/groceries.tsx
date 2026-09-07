@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Check, ChevronRight, Clock3, Minus, Package, Plus, RotateCcw, ShoppingBag, Truck } from "lucide-react";
+import { ArrowUpRight, Check, ChevronRight, Clock3, Minus, Package, Plus, RotateCcw, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Toaster, toast } from "sonner";
+import AHConnection from "./ah-connection";
 import { PRODUCTS, PRICE_CHECKED_ON } from "@/lib/groceries/catalog";
 import { estimate, queueTotal, stateFor, todayInAmsterdam, type Action, type GroceryEvent, type PackState, type Product } from "@/lib/groceries/model";
 
@@ -99,7 +100,7 @@ export default function Groceries() {
     </section>
     <aside className="refill-column"><section className="refill-card"><div className="refill-heading"><span className="refill-icon"><ShoppingBag size={21}/></span><h2>Next delivery</h2><span className="draft-label">Draft</span></div><p className="refill-intro">Your refill list, ready when you are.</p>
       {queue.length===0?<div className="queue-empty"><Package size={34} strokeWidth={1.3}/><h3>Nothing on the list yet.</h3><p>Use <strong>+</strong> beside an essential when you need a refill.</p></div>:<ul className="queue-items">{queue.map(p=><li key={p.id}><div className="queue-item-name"><a href={p.url} target="_blank" rel="noreferrer">{p.shortName}<ArrowUpRight size={13}/></a><span>{euro(p.priceCents*states[p.id].queuePacks)}</span></div><div className="quantity-control"><Button size="icon" variant="ghost" disabled={disabled} aria-label={`Remove one ${p.shortName} pack from refill list`} onClick={()=>void update(p,{kind:"queue",count:states[p.id].queuePacks-1})}><Minus size={14}/></Button><span aria-live="polite">{states[p.id].queuePacks}</span><Button size="icon" variant="ghost" disabled={disabled||states[p.id].queuePacks>=999} aria-label={`Add one ${p.shortName} pack to refill list`} onClick={()=>void update(p,{kind:"queue",count:states[p.id].queuePacks+1})}><Plus size={14}/></Button><small>{p.mode==="usage"?"packets":"packs"}</small></div></li>)}</ul>}
-      <div className="subtotal"><span>Estimated products</span><strong>{euro(total)}</strong></div><p className="delivery-cost-note">Delivery charges and deposits are additional.</p><Button className="ah-button" variant="outline" asChild><a href="https://www.ah.nl" target="_blank" rel="noreferrer">Open Albert Heijn<ArrowUpRight size={16}/></a></Button><div className="connection-note"><Truck size={17}/><p><strong>AH checkout isn't connected yet.</strong><br/>This list stays in life-app. Product links let you add items at AH.</p></div>
+      <div className="subtotal"><span>Estimated products</span><strong>{euro(total)}</strong></div><p className="delivery-cost-note">Delivery charges and deposits are additional.</p><AHConnection lines={queue.map(p=>({productId:p.id,quantity:states[p.id].queuePacks}))} disabled={disabled}/>
     </section><section className="how-card"><h3>How the learning works</h3><ol><li><span>1</span><p>Open a fresh pack.<small>Or mark one as already in use.</small></p></li><li><span>2</span><p>Log when you finish it.<small>A partly used first pack won't skew the estimate.</small></p></li><li><span>3</span><p>See your refill rhythm.<small>Add spare stock to estimate when you'll need more.</small></p></li></ol></section></aside></div>
     <footer className="page-footer"><span>life-app</span><p>Household essentials · Albert Heijn</p></footer>
     <Dialog open={!!selected} onOpenChange={open=>{if(!open&&!saving)setSelected(null);}}><DialogContent className="product-dialog"><DialogHeader><DialogTitle>{selected?.shortName}</DialogTitle><DialogDescription>{selected?.name} · {selected?.pack}</DialogDescription></DialogHeader>{selected&&detail&&<>
