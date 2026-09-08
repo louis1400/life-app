@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Your weekly coursework, reading progress, notes and study sessions.">
+  <title>Coursework · Life App</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="hume-data.js" defer></script>
+  <script src="curriculum-data.js" defer></script>
+  <script src="study.js" defer></script>
+  <script src="reader.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#reading">Skip to reading</a>
+  <aside class="sidebar">
+    <header class="brand"><span class="brand-mark" aria-hidden="true">L</span><span>Life App</span><span class="brand-section">Coursework</span></header>
+    <details id="library" class="library" open>
+      <summary>Courses &amp; weeks</summary>
+      <nav id="study-nav" aria-label="Courses and weeks"></nav>
+      <footer class="sidebar-footer"><a href="#sources">Sources &amp; text licence</a></footer>
+    </details>
+  </aside>
+  <main id="main-scroll">
+    <div class="toolbar"><span id="context">Life App · Coursework</span><a id="hume-download" href="books/hume-dialogues-complete.txt" download>Download Hume (.txt)</a></div>
+    <article id="reading" tabindex="-1">
+      <p class="eyebrow" id="book-label">COURSEWORK</p>
+      <h1 id="section-title">Coursework</h1>
+      <p class="section-note" id="section-note">Your week, your readings, your place to continue.</p>
+      <div id="text"><p>Opening the reading…</p></div>
+      <nav class="part-nav" id="part-nav" aria-label="Previous and next sections"></nav>
+    </article>
+    <noscript><p class="noscript">JavaScript is needed for the section reader. You can <a href="books/hume-dialogues-complete.txt">read the complete Hume text here</a>.</p></noscript>
+  </main>
+</body>
+</html>
