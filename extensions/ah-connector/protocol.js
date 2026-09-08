@@ -1,7 +1,7 @@
 export const SITE_ORIGIN = "https://life-app-louis.louis-nijholt.chatgpt.site";
 export const AH_BASKET = "https://www.ah.nl/mijnlijst";
 export const CHANNEL = "life-app:ah:v1";
-export const COMMANDS = new Set(["status", "connect", "disconnect", "transfer"]);
+export const COMMANDS = new Set(["status", "connect", "disconnect", "transfer", "add_one"]);
 
 export function allowedSender(sender) {
   try {

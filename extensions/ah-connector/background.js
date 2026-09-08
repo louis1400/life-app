@@ -75,13 +75,11 @@ async function connect() {
   return {...result, transfer:await previousTransfer()};
 }
 
-async function transfer(input) {
+async function transfer(input, addOne = false) {
   const lines = normalizeLines(input, CATALOG);
-  if (transferring) throw new Error("A transfer is already running. Check its result before starting another.");
   const { enabled } = await chrome.storage.local.get("enabled");
   const tab = await ownedTab();
   if (!enabled || !tab) throw new Error("Connect to AH in this browser first.");
-  transferring = true;
   const ownGeneration = generation;
   const deadline = Date.now() + 240_000;
   const assertActive = () => {
@@ -90,7 +88,7 @@ async function transfer(input) {
   const result = {id:crypto.randomUUID(), instance, status:"running", lines:lines.map(line=>({productId:line.productId, requested:line.quantity, verified:false})), startedAt:new Date().toISOString()};
   try {
     await chrome.storage.session.set({transfer:result});
-    await navigate(tab.id, {url:AH_BASKET, active:true});
+    await navigate(tab.id, {url:AH_BASKET, ...(addOne ? {} : {active:true})});
     await waitFor(tab.id, inspectConnection, [], r=>r.status==="connected", assertActive);
     await waitFor(tab.id, inspectBasket, [], r=>r.ready, assertActive);
     for (const line of lines) {
@@ -99,6 +97,11 @@ async function transfer(input) {
       await navigate(tab.id, {url:line.url});
       let state = await waitFor(tab.id, inspectProduct, [line.productId], r=>r.status==="ready", assertActive);
       progress.before = state.quantity;
+      if (addOne) {
+        if (state.quantity >= 99) throw new Error("AH already has the maximum quantity for this product.");
+        line.quantity = state.quantity + 1;
+        progress.requested = line.quantity;
+      }
       // Each click is sent once. If acknowledgement is lost, stop and reconcile
       // on the user's next transfer; never repeat an ambiguous click.
       while (remainingQuantity(state.quantity, line.quantity) > 0) {
@@ -118,22 +121,45 @@ async function transfer(input) {
       await chrome.storage.session.set({transfer:result});
     }
     assertActive();
-    await navigate(tab.id, {url:AH_BASKET, active:true});
+    await navigate(tab.id, {url:AH_BASKET, ...(addOne ? {} : {active:true})});
     result.status = "complete";
-    result.message = "Requested quantities were checked at AH. Review your basket and choose delivery there.";
+    result.message = addOne ? "One pack added to your AH basket." : "Requested quantities were checked at AH. Review your basket and choose delivery there.";
   } catch (error) {
     result.status = "interrupted";
     result.message = error instanceof Error ? error.message : interrupted;
   } finally {
     result.finishedAt = new Date().toISOString();
-    transferring = false;
     await chrome.storage.session.set({transfer:result});
   }
   return connectionStatus();
 }
 
+async function addOne(message) {
+  if (!/^[a-f0-9-]{36}$/i.test(message.id || "")) throw new Error("Invalid addition request.");
+  const lines = normalizeLines(message.lines, CATALOG);
+  if (lines.length !== 1 || lines[0].quantity !== 1) throw new Error("Choose one pack of one product.");
+  const { additions = {} } = await chrome.storage.session.get("additions");
+  const previous = additions[message.id];
+  if (previous) {
+    if (previous.productId !== lines[0].productId) throw new Error("This request was already used.");
+    return previous.result || {status:"error", message:"This addition could not be confirmed. Check your AH basket before adding again."};
+  }
+  // Record before any click. Re-delivery, including after a worker restart,
+  // must never replay an addition whose outcome is uncertain.
+  additions[message.id] = {productId:lines[0].productId};
+  await chrome.storage.session.set({additions});
+  const result = await transfer(lines, true);
+  additions[message.id].result = result;
+  await chrome.storage.session.set({additions});
+  return result;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!allowedSender(sender) || message?.channel !== CHANNEL || !COMMANDS.has(message?.command)) return;
+  const writes = message.command === "transfer" || message.command === "add_one";
+  const respond = result => sendResponse({...result, capabilities:["add_one"], version:"0.2.0"});
+  if (writes && transferring) { respond({status:"busy", message:"Wait for the current addition to finish."}); return; }
+  if (writes) transferring = true;
   const run = async () => {
     switch (message.command) {
       case "status": return connectionStatus();
@@ -143,9 +169,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await chrome.storage.local.set({enabled:false});
         return {status:"disconnected", message:"life-app disconnected in this browser. Your AH sign-in is unchanged."};
       case "transfer": return transfer(message.lines);
+      case "add_one": return addOne(message);
     }
   };
-  run().then(sendResponse).catch(() => sendResponse({status:"error", message:"The AH connection could not complete this action. Check the AH tab before trying again."}));
+  run().then(result => { if (writes) transferring = false; respond(result); }).catch(() => {
+    if (writes) transferring = false;
+    respond({status:"error", message:"The AH connection could not complete this action. Check the AH tab before trying again."});
+  });
   return true;
 });
 

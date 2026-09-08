@@ -1,7 +1,7 @@
 (() => {
   const origin = "https://life-app-louis.louis-nijholt.chatgpt.site";
   const channel = "life-app:ah:v1";
-  const commands = new Set(["status", "connect", "disconnect", "transfer"]);
+  const commands = new Set(["status", "connect", "disconnect", "transfer", "add_one"]);
   window.addEventListener("message", async event => {
     if (event.source !== window || event.origin !== origin ||
         event.data?.channel !== channel || event.data?.direction !== "request" ||

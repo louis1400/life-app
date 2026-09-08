@@ -68,7 +68,7 @@ async function harness(options={}) {
   };
   globalThis.chrome=chrome;
   await import(`../extensions/ah-connector/background.js?test=${crypto.randomUUID()}`);
-  function command(command,lines){return new Promise(resolve=>listener({channel:CHANNEL,command,lines},sender,resolve));}
+  function command(command,lines,id=crypto.randomUUID()){return new Promise(resolve=>listener({channel:CHANNEL,command,lines,id},sender,resolve));}
   return {counts,actions,command,listener};
 }
 
@@ -130,4 +130,33 @@ test("requests from another origin and unsupported order operations have no effe
   assert.equal(h.listener({channel:CHANNEL,command:"checkout"},sender,()=>{responded=true;}),undefined);
   assert.equal(responded,false);
   assert.deepEqual(h.actions,[]);
+});
+
+
+test("each Add to AH click adds exactly one more pack, including when already in the basket",async()=>{
+  const h=await harness();
+  const lines=[{productId:tissue,quantity:1}];
+  const id=crypto.randomUUID();
+  const first=await h.command("add_one",lines,id);
+  assert.equal(first.transfer.status,"complete");
+  assert.equal(h.counts.get(tissue),2);
+  await h.command("add_one",lines,id);
+  assert.equal(h.counts.get(tissue),2,"re-delivering one click must not add another pack");
+  await h.command("add_one",lines);
+  assert.equal(h.counts.get(tissue),3,"a new deliberate click adds another pack");
+  assert.equal(h.counts.get("unrelated-product"),7);
+});
+
+test("an uncertain one-pack addition is not replayed and overlapping additions are rejected",async()=>{
+  const h=await harness({loseAcknowledgement:true});
+  const lines=[{productId:tissue,quantity:1}];
+  const id=crypto.randomUUID();
+  const pending=h.command("add_one",lines,id);
+  const concurrent=await h.command("add_one",lines);
+  assert.equal(concurrent.status,"busy");
+  const first=await pending;
+  assert.equal(first.transfer.status,"interrupted");
+  await h.command("add_one",lines,id);
+  assert.equal(h.counts.get(tissue),2);
+  assert.equal(h.actions.filter(a=>a.type==="click").length,1);
 });

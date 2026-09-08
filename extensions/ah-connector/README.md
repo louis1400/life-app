@@ -1,4 +1,4 @@
-# life-app · Albert Heijn connector
+# life-app · Albert Heijn connector (0.2.0)
 
 This personal Chrome/Edge extension connects the refill list at
 https://life-app-louis.louis-nijholt.chatgpt.site to the AH account signed in
@@ -12,11 +12,15 @@ at https://www.ah.nl in the same desktop browser.
    folder that contains `manifest.json`.
 4. Reload life-app, click **Connect Albert Heijn**, and sign in directly on AH
    if necessary. Return to life-app and click **Connect Albert Heijn** again.
-5. Add your chosen quantities to the refill list. Choose **Review refill
-   transfer**, inspect the quantities, then **Prepare AH basket**.
+5. Click **Add to AH** beside a product. One click adds one extra pack to the
+   basket, even when some are already there. Wait for confirmation before the
+   next click. Stock and bulk refill planning are available separately.
 
-Keep both tabs open while the transfer runs. The connector visits the exact
-selected products and clicks their visible add/increase buttons. It tops up to
+To update an existing installation, replace its extracted files with this
+download, reload the extension in Manage extensions, and reload life-app.
+
+Keep both tabs open while the transfer runs. The connector visits the exact selected products and clicks their visible
+add/increase buttons. Add to AH adds one extra pack. Bulk refill transfer tops up to
 a minimum quantity, includes any packs already in the basket, and never lowers
 quantities or removes other products. Check the complete basket, current prices,
 delivery availability, and final total at AH before confirming an order there.
@@ -34,7 +38,7 @@ The refill list remains in life-app after a transfer.
 - **Disconnect** stops further additions and disables the connection. It
   leaves the AH session and any already added products intact.
 - The connector has no checkout, payment, delivery booking, order editing or
-  background scheduling operation. A transfer always starts from a user review.
+  background scheduling operation. An addition starts with Add to AH; a bulk transfer starts from a review.
 - A normal basket with an **Online bestellen** button is required. An order in
   editing mode or an unfamiliar page stops the transfer.
 - Each requested quantity must be an integer from 1 to 99, matching AH's

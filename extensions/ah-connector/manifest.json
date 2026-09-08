@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "life-app · Albert Heijn",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Connect your life-app refill list to your Albert Heijn basket in this browser.",
   "minimum_chrome_version": "120",
   "permissions": ["storage", "scripting"],

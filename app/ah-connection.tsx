@@ -8,7 +8,7 @@ import { requestAH, type AHConnectionState, type AHLine } from "@/lib/ah-connect
 import { PRODUCTS } from "@/lib/groceries/catalog";
 
 type ReviewLine = AHLine & { name: string };
-export default function AHConnection({lines, disabled}:{lines:AHLine[]; disabled:boolean}) {
+export default function AHConnection({lines=[], disabled=false, single=false, onReady}:{lines?:AHLine[]; disabled?:boolean; single?:boolean; onReady?:(ready:boolean)=>void}) {
   const [state, setState] = useState<AHConnectionState|null>(null);
   const [installed, setInstalled] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -19,6 +19,8 @@ export default function AHConnection({lines, disabled}:{lines:AHLine[]; disabled
   const busyRef = useRef(false);
   const operationRef = useRef(0);
   const connected = state?.status === "connected";
+  const needsUpdate = single && installed && !state?.capabilities?.includes("add_one");
+  useEffect(()=>{onReady?.(connected && !needsUpdate);},[connected,needsUpdate,onReady]);
 
   async function check() {
     if (busyRef.current) return;
@@ -68,7 +70,7 @@ export default function AHConnection({lines, disabled}:{lines:AHLine[]; disabled
 
   return <div className="ah-connection">
     <div className="ah-connection-status"><Link2 size={17}/><p>{statusText}</p></div>
-    {connected ? <>
+    {needsUpdate ? <><Button className="ah-button" onClick={()=>setSetup(true)}>Update connector</Button><p className="ah-help">Install version 0.2.0 to use Add to AH.</p></> : single && connected ? <p className="ah-help">Each Add to AH click adds one extra pack. Keep the AH tab open.</p> : connected ? <>
       <Button className="ah-button" disabled={disabled || busy || lines.length===0} onClick={prepareReview}>
         {busy ? <><LoaderCircle size={16} className="ah-spinner"/>Preparing AH basket…</> : <>Review refill transfer<ArrowUpRight size={16}/></>}
       </Button>
@@ -81,7 +83,7 @@ export default function AHConnection({lines, disabled}:{lines:AHLine[]; disabled
     </>}
     {error && <p className="ah-error" role="alert">{error}</p>}
     {state?.status === "needs_login" && <p className="ah-help">Sign in on the AH tab that opened, then return here and click Connect Albert Heijn.</p>}
-    {transfer && transfer.status !== "running" && <div className={`ah-transfer-result ${transfer.status==="complete"?"success":"partial"}`} role="status">
+    {!single && transfer && transfer.status !== "running" && <div className={`ah-transfer-result ${transfer.status==="complete"?"success":"partial"}`} role="status">
       <strong>{transfer.status==="complete" ? "Quantities checked at AH" : "Transfer needs attention"}</strong>
       <p>{transfer.lines.filter(l=>l.verified).length} of {transfer.lines.length} products verified. {transfer.message}</p>
     </div>}
@@ -99,7 +101,7 @@ export default function AHConnection({lines, disabled}:{lines:AHLine[]; disabled
         <li><strong>Reload life-app and connect.</strong><p>Click Connect Albert Heijn. Sign in directly on AH if asked, then return here to check the connection.</p><Button variant="outline" onClick={()=>window.location.reload()}>Reload life-app</Button></li>
       </ol>
       <p className="ah-help">The connector can read and use controls on ah.nl and this life-app site. Your password and session cookies stay in your browser. This connection uses the AH account signed in there.</p>
-      <p className="ah-help">Keep the AH tab open during a transfer. Delivery and final order confirmation happen at AH.</p>
+      <p className="ah-help">Already installed? Replace the files in your extracted connector folder with this download, click Reload for the extension in Manage extensions, then reload life-app.</p><p className="ah-help">Keep the AH tab open. Delivery and final order confirmation happen at AH.</p>
       <Button disabled={busy} onClick={()=>void act("connect")}>{busy ? "Checking…" : "Check AH connection"}</Button>
     </DialogContent></Dialog>
 
