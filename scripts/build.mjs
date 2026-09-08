@@ -1,4 +1,4 @@
-import {readFile, mkdir, writeFile} from 'node:fs/promises';
+import {readFile, mkdir, writeFile, cp} from 'node:fs/promises';
 // Explicit allowlist: licensed readings and local files can never enter the bundle.
 const paths = {'/index.html':'text/html; charset=utf-8','/styles.css':'text/css; charset=utf-8','/reader.js':'text/javascript; charset=utf-8','/study.js':'text/javascript; charset=utf-8','/curriculum-data.js':'text/javascript; charset=utf-8','/hume-data.js':'text/javascript; charset=utf-8','/books/hume-dialogues-complete.txt':'text/plain; charset=utf-8'};
 const assets = {};
@@ -21,4 +21,5 @@ await mkdir('dist/server', {recursive: true});
 await mkdir('dist/.openai', {recursive: true});
 await writeFile('dist/server/index.js', worker);
 await writeFile('dist/.openai/hosting.json', await readFile('.openai/hosting.json'));
-console.log('Built reading app with private PDF storage.');
+await cp('drizzle', 'dist/.openai/drizzle', {recursive: true});
+console.log('Built coursework app, private storage and migrations.');
