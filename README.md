@@ -1,95 +1,47 @@
-# life-app
+# Life app
 
-A personal app for everyday life. The first module tracks household essentials and learns replenishment needs for Albert Heijn deliveries.
+A personal home for Study, Groceries, and Vault. The `integration/life-app` branch combines the existing features without replacing their source branches.
 
-## Add a product directly to AH
+## Run locally
 
-The home screen shows the 13 chosen products with minus, plus, and directly
-editable pack quantities (0–99). A single **Add all to AH** button passes every
-selected product and quantity to AH's own `/mijnlijst/add-multiple` link using
-repeated `p=PRODUCT_ID%3AQUANTITY` parameters. Zero quantities are omitted.
-The selection and estimated subtotal are visible in a sticky bottom bar;
-the button is disabled when nothing is selected. Clear resets the selection.
-The summary compares the estimated groceries total against AH's €50 delivery
-minimum (AH delivery help, checked 8 September 2026), showing progress and the
-remaining amount, or an estimated minimum-reached status. It excludes existing
-AH basket items, discounts, delivery charges, and deposits. Nonempty selections
-below the minimum can still be sent so the user can combine them with other
-groceries at AH. Current prices and final eligibility are confirmed at AH.
-Quantities stay in this browser's local storage when available, including
-after returning from AH; sending does not clear them or assert success.
+Use Node 22.13 or newer (tested with Node 24.19).
 
-The link opens in the current tab. No extension, installation, or separate
-connection is needed. AH handles the browser's existing login and may ask
-the user to confirm with “Toevoegen aan winkelmandje”. Browser Back returns
-to the staged selection. Product and basket links also stay in the same tab.
+```sh
+npm ci
+npm run db:local
+npm run dev -- --port 5178 --strictPort
+```
 
-The app requests the selected quantities and does not claim to have verified a basket
-mutation: AH owns the result and confirmation. The live AH add-link page was
-checked on 8 September 2026; an authenticated addition and behavior for a
-product already in the basket still need end-to-end verification.
+Open <http://127.0.0.1:5178>. The development server uses an isolated local preview identity and local storage. It accepts loopback requests only; production still requires the platform's authenticated user header. Existing hosted data is not copied into this preview.
 
-The previous stock and refill planning view remains available at `/stock`.
+| Area | Route | Retained features |
+| --- | --- | --- |
+| Home | `/` | Module navigation, saved study session, selection and archive summaries |
+| Study | `/study` | Coursework plans, reading progress, notes, resumable sessions, Hume reader |
+| Groceries | `/groceries` | Original 13 products, persistent pack selection, estimated total, AH handoff |
+| Stock tracking | `/groceries/stock` | Pack observations, usage estimates, refill drafts, undo |
+| Vault | `/vault` | Search, collections, editing, uploads, Drive and capture setup |
 
-## Working now
+The shared shell provides desktop navigation, mobile bottom navigation, and common design tokens. Study remains an intact embedded module so its feature branch can continue independently. `/stock` redirects to the new stock route.
 
-- The 13 exact AH products selected by the owner, with original product links, pack sizes, and local product images.
-- Unknown consumption and stock stay unknown. Nothing is ordered automatically.
-- Record a fresh pack opening and its finish date. A pack already in use does not create a full-pack measurement.
-- Single-use noodle packets learn consumption cadence from repeated usage dates instead of time spent eating a packet.
-- Record unopened spare packs, view tentative refill estimates, and maintain an explicit draft refill list.
-- Undo the latest active update for each product, including its effect on measurements and stock.
-- D1-backed history scoped to the signed-in platform user. Mutations use idempotency keys and optimistic concurrency.
+## Checks
 
-## Legacy stock-view AH browser connection
+```sh
+npm test
+npx tsc --noEmit
+```
 
-Install the personal Chrome/Edge connector using **Connect Albert Heijn** in
-the refill panel. It uses the AH session in that desktop browser. The app
-reports a connection only after the extension observes AH's signed-in control.
-The sign-in in a ChatGPT cloud browser is separate from this installation.
+The suite builds the combined Worker and runs 36 tests covering the original grocery, connector, archive, and study behavior, plus shared routes, persistence, access isolation, and the local preview boundary. Browser acceptance is separate; see the [integration report](docs/life-integration.md) for the flows inspected and external checks still blocked.
 
-Choose explicit quantities, review the transfer, and prepare the AH basket.
-The connector visits each exact product, checks its existing quantity, and adds
-only missing packs. It preserves other products and never reduces quantities.
-Quantities are checked again after a completed page reload. A failed or
-ambiguous click stops the transfer; a later manual retry reads quantities again.
-Disconnect stops further additions and leaves already added items intact.
+## Current boundaries
 
-The source and installation details are in
-[`extensions/ah-connector/README.md`](extensions/ah-connector/README.md).
-Run `python scripts/package-ah-connector.py` after connector or catalog edits
-and before the production build. This refreshes the downloadable ZIP.
+- Study's AI actions open ChatGPT. Some curriculum readings are explicitly unavailable in the source module.
+- AH receives a selection through its own website; basket receipt and checkout are confirmed there. The legacy desktop extension keeps its original origin restrictions.
+- New Vault saves require Google Drive configuration and account connection. The separate iPhone capture setup is retained; files captured directly to Drive do not automatically enter the app's archive index.
+- Hosting metadata is inherited from the grocery Site. This integration has not been deployed, and existing hosted apps or data have not been changed.
 
-The AH page controls and signed-in access were inspected on 7 September 2026.
-The connector orchestration has automated tests for origin restrictions,
-exact products, duplicate prevention, lost acknowledgements and disconnects.
-A real desktop extension installation and a user-approved transfer are still
-needed to validate the complete connection. AH can change its page structure.
+## Feature development
 
-Delivery booking, final checkout and order confirmation happen on AH. No
-orders, payments or recurring delivery jobs are created by this app. Never
-infer spending authorization from a usage estimate. Unattended orders will
-need explicit quantities, spending limits, delivery preferences and a proven
-account integration.
+See the [branch strategy, merge resolutions, architecture, and verification notes](docs/life-integration.md). Original feature documentation is preserved in [Groceries](docs/features/groceries.md), [Vault](docs/features/vault.md), and [Study](modules/study/README.md).
 
-## Development
-
-This is a React / Vinext application targeting a Cloudflare Worker with D1 storage. Node 22.13 or newer is required; Node 22.18 or newer runs the TypeScript model tests without a loader.
-
-- Install: `npm run install:ci`
-- Development: `npm run dev`
-- Schema migrations: `npm run db:generate`
-- Production build: `npm run build`
-- Usage and concurrency checks: `node --experimental-strip-types --test tests/groceries.test.mjs`
-- Connector checks: `node --test tests/ah-connector.test.mjs`
-
-The local development server does not fabricate a logged-in user. Persistent APIs require the trusted platform `oai-authenticated-user-id` header. The hosted dispatcher authenticates visitors; a local trusted harness can supply a test identity.
-
-Runtime data and credentials are never committed. `.openai/hosting.json` declares the Site identity and logical D1 binding; Sites provisions and applies migrations on deployment. `package-lock.json` pins the starter dependencies.
-
-## Data provenance
-
-Catalog prices were checked on AH product pages on 7 September 2026. Prices are estimates, exclude additional delivery charges and deposits, and do not imply real-time stock or promotional pricing. Product images and source URLs are documented in `docs/product-image-sources.json`; the images belong to their respective rights holders and are used here to identify the selected products.
-
-
-Vault feature documentation: [docs/features/vault.md](docs/features/vault.md).
+Catalog prices remain estimates from the original feature. Product image sources are recorded in `docs/product-image-sources.json`.

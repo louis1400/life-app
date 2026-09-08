@@ -1,3 +1,4 @@
+import { localPreview } from "./build/local-preview";
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
@@ -45,13 +46,14 @@ export default defineConfig(async () => {
 
   return {
     server: {
-      host: "0.0.0.0",
-      allowedHosts: ["terminal.local"],
+      host: "127.0.0.1",
+      allowedHosts: ["localhost", "127.0.0.1"],
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),
     },
     plugins: [
+      localPreview(),
       vinext(),
       sites(),
       cloudflare({

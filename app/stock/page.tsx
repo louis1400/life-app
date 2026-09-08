@@ -1,2 +1,2 @@
-import Groceries from "../groceries";
-export default function Stock() { return <Groceries />; }
+import {redirect} from "next/navigation";
+export default function Stock(){redirect("/groceries/stock");}

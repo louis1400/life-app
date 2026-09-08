@@ -12,3 +12,5 @@ export const driveOAuthStates = sqliteTable("drive_oauth_states", {
 }, table => [index("drive_state_expiry").on(table.expiresAt)]);
 
 export * from "./groceries-schema";
+
+export * from "../modules/study/db/schema";

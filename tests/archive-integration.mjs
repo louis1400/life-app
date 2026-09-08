@@ -64,7 +64,7 @@ async function setup(name,configured=true){
  for(const migration of (await readdir('drizzle')).filter(n=>n.endsWith('.sql')).sort())for(const statement of (await readFile('drizzle/'+migration,'utf8')).split('--> statement-breakpoint'))await db.prepare(statement.trim()).run();
  const request=async(path,init={},user='owner-a')=>{const r=new Request(origin+path,{...init,headers:{...(user?{'oai-authenticated-user-id':user}:{}),...init.headers}});return mf.dispatchFetch(r.url,{method:r.method,headers:Object.fromEntries(r.headers),body:r.body?await r.arrayBuffer():undefined,redirect:'manual'});};
  async function start(){const r=await request('/api/drive/connect',{method:'POST',headers:{Origin:origin}});assert.equal(r.status,303);const u=new URL(r.headers.get('Location'));assert.equal(u.origin,'https://accounts.google.com');assert.equal(u.searchParams.get('scope'),SCOPE);return u.searchParams.get('state');}
- async function connect(){const state=await start();const response=await request('/api/drive/callback?code=code&state='+state);assert.equal(response.headers.get('Location'),'/?drive=connected');return state;}
+ async function connect(){const state=await start();const response=await request('/api/drive/callback?code=code&state='+state);assert.equal(response.headers.get('Location'),'/vault?drive=connected');return state;}
  return {mf,db,mock,request,start,connect,async dispose(){await mf.dispose();await rm(out,{force:true});}};
 }
 const details={title:'Hume reading',url:'https://example.org/hume',kind:'Article',note:'For philosophy',tags:['hume'],destinations:['Reading','Study']};
@@ -79,7 +79,7 @@ test('Drive OAuth state, encrypted grants, account binding, revocation and setup
   const state=await x.start();
   assert.match((await request('/api/drive/callback?state='+state+'&code=x',{},'owner-b')).headers.get('Location'),/drive_error=/);
   assert.match((await request('/api/drive/callback?state=bad&code=x')).headers.get('Location'),/drive_error=/);
-  assert.equal((await request('/api/drive/callback?state='+state+'&code=x')).headers.get('Location'),'/?drive=connected');
+  assert.equal((await request('/api/drive/callback?state='+state+'&code=x')).headers.get('Location'),'/vault?drive=connected');
   assert.match((await request('/api/drive/callback?state='+state+'&code=x')).headers.get('Location'),/drive_error=/,'State cannot be reused');
   const stored=await db.prepare('SELECT * FROM drive_connections WHERE owner=?').bind('owner-a').first();assert.ok(stored.refresh_token&&!stored.refresh_token.includes('test-refresh-token'));
   const status=await (await request('/api/drive')).json();assert.equal(status.connected,true);assert.equal(status.email,'google-a@example.org');assert.ok(!JSON.stringify(status).includes('token'));

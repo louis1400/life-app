@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-export const metadata: Metadata = { title:"Groceries · life-app", description:"Your household essentials, learning when you need a refill.",icons:{icon:"/favicon.svg",shortcut:"/favicon.svg"}};
-export default function RootLayout({children}:Readonly<{children:React.ReactNode}>) { return <html lang="en"><body>{children}</body></html>; }
+import LifeShell from "./life-shell";
+export const metadata: Metadata = { title: "Life · Your personal space", description: "Study, groceries, and your saved finds in one place.", icons: {icon: "/favicon.svg"} };
+export default function RootLayout({children}: Readonly<{children:React.ReactNode}>) {return <html lang="en"><body><LifeShell>{children}</LifeShell></body></html>;}

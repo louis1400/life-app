@@ -30,7 +30,7 @@ export default function Essentials() {
   const basketUrl="https://www.ah.nl/mijnlijst/add-multiple?"+new URLSearchParams(selected.map(p=>["p",`${p.id.replace(/^wi/,"")}:${quantities[p.id]}`])).toString();
   const euro=(cents:number)=>new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR"}).format(cents/100);
   return <main className="workspace shop-workspace">
-    <header className="masthead"><a className="wordmark" href="/"><span className="brand-mark">l</span>life-app</a><span className="header-divider"/><span className="section-label">Groceries</span><a className="stock-navigation" href="/stock">Stock tracking</a></header>
+    <header className="masthead"><a className="wordmark" href="/"><span className="brand-mark">l</span>life-app</a><span className="header-divider"/><span className="section-label">Groceries</span><a className="stock-navigation" href="/groceries/stock">Stock tracking</a></header>
     <div className="page-heading"><div><h1>Your AH essentials.</h1><p className="intro">Choose your quantities, then add everything to AH.</p></div><Button variant="outline" asChild><a href="https://www.ah.nl/mijnlijst">Open AH basket<ArrowUpRight size={16}/></a></Button></div>
     <p className="shop-connection-hint">Amounts are packs. AH opens in this tab and may ask you to tap “Toevoegen aan winkelmandje”.</p>
     <div className="shop-groups">{Array.from(new Set(PRODUCTS.map(p=>p.category))).map(category=><section className="product-group" key={category}><h2 className="category-label">{category}</h2><div className="product-list">{PRODUCTS.filter(p=>p.category===category).map(p=><article className="shop-product" key={p.id}>
