@@ -73,8 +73,9 @@
   }
   function render() {
     if(!book) {text.replaceChildren(element('p','The book could not be loaded. Use the complete-text download above.','unavailable'));return;}
-    let key=location.hash.slice(1)||'study-enlightenment-1';
-    if(!book.sections[key] && key!=='sources' && key!=='needed' && !/^study-(enlightenment|moral)-[1-8]$/.test(key) && !/^anthology-(18|12|21)$/.test(key)) key='study-enlightenment-1';
+    let key=location.hash.slice(1)||'coursework';
+    if(!book.sections[key] && key!=='sources' && key!=='needed' && key!=='coursework' && !/^session-(enlightenment|moral)-[1-8]-[0-9]+$/.test(key) && !/^study-(enlightenment|moral)-[1-8]$/.test(key) && !/^anthology-(18|12|21)$/.test(key)) key='coursework';
+    if(key.startsWith('session-')&&!window.STUDY.isReading(key.slice(8)))key='coursework';
     text.replaceChildren();navigation.replaceChildren();
     document.getElementById('reading').classList.remove('study-surface');
     document.getElementById('hume-download').hidden=false;
@@ -113,5 +114,6 @@
     if(location.hash.startsWith('#anthology-'))render();
   }
   updateBadges();render();loadSaved();
+  window.addEventListener('courseworkchange',()=>render());
   window.addEventListener('hashchange',()=>{render();document.getElementById('reading').focus({preventScroll:true});});
 })();
