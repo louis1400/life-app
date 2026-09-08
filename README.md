@@ -5,16 +5,16 @@ A personal app for everyday life. The first module tracks household essentials a
 ## Add a product directly to AH
 
 The home screen shows the 13 chosen products with an **Add to AH** button.
-Each click requests exactly one additional pack, including when that product
-is already in the basket. It shows success only after the quantity is checked
-again at AH. The Chrome/Edge connector must be installed in the same browser;
-a ChatGPT cloud-browser sign-in does not link the app.
+Each button follows AH's own `/mijnlijst/add-multiple?p=PRODUCT_ID%3A1`
+link in the current tab. No extension, installation, or separate connection
+is needed for this screen. AH handles the browser's existing login and may
+ask the user to confirm with “Toevoegen aan winkelmandje”. Browser Back returns
+to the product list. Product and basket links also stay in the same tab.
 
-Use connector version 0.2.0. The app detects an older connector and offers the
-update download. Requests are serialized, and a request ID is recorded before
-any click so replaying an uncertain request cannot add another pack. Adding
-uses the browser in the background and can take several seconds. Actual
-installation and an AH basket addition still need end-to-end verification.
+The app requests quantity one and does not claim to have verified a basket
+mutation: AH owns the result and confirmation. The live AH add-link page was
+checked on 8 September 2026; an authenticated addition and behavior for a
+product already in the basket still need end-to-end verification.
 
 The previous stock and refill planning view remains available at `/stock`.
 
@@ -28,7 +28,7 @@ The previous stock and refill planning view remains available at `/stock`.
 - Undo the latest active update for each product, including its effect on measurements and stock.
 - D1-backed history scoped to the signed-in platform user. Mutations use idempotency keys and optimistic concurrency.
 
-## AH browser connection
+## Legacy stock-view AH browser connection
 
 Install the personal Chrome/Edge connector using **Connect Albert Heijn** in
 the refill panel. It uses the AH session in that desktop browser. The app
