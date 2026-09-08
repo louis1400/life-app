@@ -4,14 +4,21 @@ A personal app for everyday life. The first module tracks household essentials a
 
 ## Add a product directly to AH
 
-The home screen shows the 13 chosen products with an **Add to AH** button.
-Each button follows AH's own `/mijnlijst/add-multiple?p=PRODUCT_ID%3A1`
-link in the current tab. No extension, installation, or separate connection
-is needed for this screen. AH handles the browser's existing login and may
-ask the user to confirm with “Toevoegen aan winkelmandje”. Browser Back returns
-to the product list. Product and basket links also stay in the same tab.
+The home screen shows the 13 chosen products with minus, plus, and directly
+editable pack quantities (0–99). A single **Add all to AH** button passes every
+selected product and quantity to AH's own `/mijnlijst/add-multiple` link using
+repeated `p=PRODUCT_ID%3AQUANTITY` parameters. Zero quantities are omitted.
+The selection and estimated subtotal are visible in a sticky bottom bar;
+the button is disabled when nothing is selected. Clear resets the selection.
+Quantities stay in this browser's local storage when available, including
+after returning from AH; sending does not clear them or assert success.
 
-The app requests quantity one and does not claim to have verified a basket
+The link opens in the current tab. No extension, installation, or separate
+connection is needed. AH handles the browser's existing login and may ask
+the user to confirm with “Toevoegen aan winkelmandje”. Browser Back returns
+to the staged selection. Product and basket links also stay in the same tab.
+
+The app requests the selected quantities and does not claim to have verified a basket
 mutation: AH owns the result and confirmation. The live AH add-link page was
 checked on 8 September 2026; an authenticated addition and behavior for a
 product already in the basket still need end-to-end verification.
