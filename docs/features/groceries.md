@@ -90,6 +90,3 @@ Runtime data and credentials are never committed. `.openai/hosting.json` declare
 ## Data provenance
 
 Catalog prices were checked on AH product pages on 7 September 2026. Prices are estimates, exclude additional delivery charges and deposits, and do not imply real-time stock or promotional pricing. Product images and source URLs are documented in `docs/product-image-sources.json`; the images belong to their respective rights holders and are used here to identify the selected products.
-
-
-Vault feature documentation: [docs/features/vault.md](docs/features/vault.md).

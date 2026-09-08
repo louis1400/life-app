@@ -41,5 +41,8 @@ next-env.d.ts
 /outputs/
 /work/
 
-# TypeScript incremental cache
 *.tsbuildinfo
+
+!.env.example
+
+/output/
