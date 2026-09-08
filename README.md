@@ -10,6 +10,12 @@ selected product and quantity to AH's own `/mijnlijst/add-multiple` link using
 repeated `p=PRODUCT_ID%3AQUANTITY` parameters. Zero quantities are omitted.
 The selection and estimated subtotal are visible in a sticky bottom bar;
 the button is disabled when nothing is selected. Clear resets the selection.
+The summary compares the estimated groceries total against AH's €50 delivery
+minimum (AH delivery help, checked 8 September 2026), showing progress and the
+remaining amount, or an estimated minimum-reached status. It excludes existing
+AH basket items, discounts, delivery charges, and deposits. Nonempty selections
+below the minimum can still be sent so the user can combine them with other
+groceries at AH. Current prices and final eligibility are confirmed at AH.
 Quantities stay in this browser's local storage when available, including
 after returning from AH; sending does not clear them or assert success.
 

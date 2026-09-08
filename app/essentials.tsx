@@ -24,6 +24,9 @@ export default function Essentials() {
   const selected=PRODUCTS.filter(p=>(quantities[p.id]||0)>0);
   const packs=selected.reduce((sum,p)=>sum+quantities[p.id],0);
   const subtotal=selected.reduce((sum,p)=>sum+p.priceCents*quantities[p.id],0);
+  // AH delivery help, checked 8 September 2026. Compare groceries only.
+  const deliveryMinimum=5000;
+  const remaining=Math.max(0,deliveryMinimum-subtotal);
   const basketUrl="https://www.ah.nl/mijnlijst/add-multiple?"+new URLSearchParams(selected.map(p=>["p",`${p.id.replace(/^wi/,"")}:${quantities[p.id]}`])).toString();
   const euro=(cents:number)=>new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR"}).format(cents/100);
   return <main className="workspace shop-workspace">
@@ -39,11 +42,16 @@ export default function Essentials() {
         <Button variant="outline" size="icon" disabled={!loaded||(quantities[p.id]||0)>=99} onClick={()=>quantity(p.id,(quantities[p.id]||0)+1)} aria-label={`One more pack of ${p.shortName}`}><Plus size={16}/></Button>
       </div>
     </article>)}</div></section>)}</div>
-    <p className="price-note">Prices last checked 7 September 2026. AH confirms current prices and availability. Choose delivery and finish checkout at AH.</p>
+    <p className="price-note">Prices last checked 7 September 2026. AH confirms current prices, discounts and availability. <a href="https://www.ah.nl/klantenservice/online-bestellen/bezorging?size=50">AH delivery minimum: €50</a> (checked 8 September 2026). Choose delivery and finish checkout at AH.</p>
     <section className="shop-selection" aria-label="Selected products">
-      <div aria-live="polite"><strong>{packs?`${packs} ${packs===1?"pack":"packs"} · ${selected.length} ${selected.length===1?"product":"products"}`:"Choose quantities above"}</strong>{packs>0&&<p>{euro(subtotal)} estimated</p>}</div>
+      <div className="shop-total" aria-live="polite"><span>Estimated groceries total</span><strong>{euro(subtotal)}</strong><p>{packs?`${packs} ${packs===1?"pack":"packs"} · ${selected.length} ${selected.length===1?"product":"products"}`:"Choose quantities above"}</p></div>
       <div className="shop-selection-actions">{packs>0&&<Button variant="ghost" onClick={()=>setQuantities({})}>Clear</Button>}
       {packs>0?<Button asChild><a href={basketUrl}><ShoppingBasket size={18}/>Add all to AH</a></Button>:<Button disabled><ShoppingBasket size={18}/>Add all to AH</Button>}</div>
+      <div className={`shop-minimum ${remaining===0?"is-reached":""}`}>
+        <div className="shop-minimum-label" aria-live="polite"><strong>{remaining>0?`${euro(remaining)} to reach the delivery minimum`:"Delivery minimum reached (estimated)"}</strong><span>{euro(deliveryMinimum)} minimum</span></div>
+        <progress max={deliveryMinimum} value={Math.min(subtotal,deliveryMinimum)} aria-label="Progress toward AH delivery minimum" aria-valuetext={`${euro(subtotal)} of ${euro(deliveryMinimum)}; ${euro(remaining)} remaining`}/>
+        <p>Based on this selection only. Items already in your AH basket, discounts, delivery charges and deposits aren’t included. AH confirms the final amount.</p>
+      </div>
     </section>
   </main>;
 }
