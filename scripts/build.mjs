@@ -1,6 +1,6 @@
 import {readFile, mkdir, writeFile} from 'node:fs/promises';
 // Explicit allowlist: licensed readings and local files can never enter the bundle.
-const paths = {'/index.html':'text/html; charset=utf-8','/styles.css':'text/css; charset=utf-8','/reader.js':'text/javascript; charset=utf-8','/hume-data.js':'text/javascript; charset=utf-8','/books/hume-dialogues-complete.txt':'text/plain; charset=utf-8'};
+const paths = {'/index.html':'text/html; charset=utf-8','/styles.css':'text/css; charset=utf-8','/reader.js':'text/javascript; charset=utf-8','/study.js':'text/javascript; charset=utf-8','/curriculum-data.js':'text/javascript; charset=utf-8','/hume-data.js':'text/javascript; charset=utf-8','/books/hume-dialogues-complete.txt':'text/plain; charset=utf-8'};
 const assets = {};
 for (const [path, type] of Object.entries(paths)) assets[path] = {type, body: await readFile(`dist${path}`, 'utf8')};
 const api = await readFile('worker/readings.mjs', 'utf8');

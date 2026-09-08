@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Your Enlightenment readings for Weeks 1 and 2, with Hume’s complete Dialogues available to read.">
+  <meta name="description" content="Your philosophy readings by course and week, with saved texts, edition notes and missing materials.">
   <title>Study · Life App</title>
   <link rel="stylesheet" href="styles.css">
   <script src="hume-data.js" defer></script>
+  <script src="curriculum-data.js" defer></script>
+  <script src="study.js" defer></script>
   <script src="reader.js" defer></script>
 </head>
 <body>
@@ -15,37 +17,12 @@
     <header class="brand"><span class="brand-mark" aria-hidden="true">L</span><span>Life App</span><span class="brand-section">Study</span></header>
     <details id="library" class="library" open>
       <summary>Reading list</summary>
-      <nav aria-label="Enlightenment readings">
-        <div class="course-label">ENLIGHTENMENT</div>
-        <p class="scope">Weeks 1 &amp; 2</p>
-        <p class="book-title">Dialogues Concerning<br>Natural Religion</p>
-        <p class="author">David Hume</p>
-        <a class="reading-link" href="#hume-preface">Preface</a>
-        <p class="group-label">Week 1 · Parts 1–3</p>
-        <a class="reading-link" href="#hume-1"><span>Part 1</span><span class="availability">Read</span></a>
-        <a class="reading-link" href="#hume-2"><span>Part 2</span><span class="availability">Read</span></a>
-        <a class="reading-link" href="#hume-3"><span>Part 3</span><span class="availability">Read</span></a>
-        <p class="group-label">Week 2 · Parts 4–6</p>
-        <a class="reading-link" href="#hume-4"><span>Part 4</span><span class="availability">Read</span></a>
-        <a class="reading-link" href="#hume-5"><span>Part 5</span><span class="availability">Read</span></a>
-        <a class="reading-link" href="#hume-6"><span>Part 6</span><span class="availability">Read</span></a>
-        <details class="rest"><summary>Rest of the book</summary>
-          <a class="reading-link" href="#hume-7">Part 7</a><a class="reading-link" href="#hume-8">Part 8</a>
-          <a class="reading-link" href="#hume-9">Part 9</a><a class="reading-link" href="#hume-10">Part 10</a>
-          <a class="reading-link" href="#hume-11">Part 11</a><a class="reading-link" href="#hume-12">Part 12</a>
-        </details>
-        <div class="book-divider"></div>
-        <p class="book-title">A New Modern Philosophy</p>
-        <p class="author">Marshall &amp; Sreedhar · 2019</p>
-        <a class="reading-link anthology-link" href="#anthology-18"><span>18 · Montesquieu<small>Week 1</small></span><span class="needed">Read online</span></a>
-        <a class="reading-link anthology-link" href="#anthology-12"><span>12 · Newton<small>Week 2</small></span><span class="needed">Read online</span></a>
-        <a class="reading-link anthology-link" href="#anthology-21"><span>21 · Du Châtelet<small>Week 2</small></span><span class="needed">Read online</span></a>
-      </nav>
+      <nav id="study-nav" aria-label="Courses and weeks"></nav>
       <footer class="sidebar-footer"><a href="#sources">Sources &amp; text licence</a></footer>
     </details>
   </aside>
   <main id="main-scroll">
-    <div class="toolbar"><span id="context">Week 1 · Tutorial reading</span><a href="books/hume-dialogues-complete.txt" download>Download Hume (.txt)</a></div>
+    <div class="toolbar"><span id="context">Week 1 · Tutorial reading</span><a id="hume-download" href="books/hume-dialogues-complete.txt" download>Download Hume (.txt)</a></div>
     <article id="reading" tabindex="-1">
       <p class="eyebrow" id="book-label">DAVID HUME · DIALOGUES CONCERNING NATURAL RELIGION</p>
       <h1 id="section-title">Part 1</h1>

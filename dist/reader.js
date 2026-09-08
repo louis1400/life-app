@@ -17,18 +17,19 @@
   const saved = new Map();
   let storageError = '';
   let storageReady = false;
+  const driveChapters={18:'https://drive.google.com/file/d/1RuCNJWf-xrIhyy2FZEs7YODs7Cl21HMf/view',12:'https://drive.google.com/file/d/1c8InCEmwDlZzI6b-PaxgAew9mZVMT5J8/view',21:'https://drive.google.com/file/d/1sMNoLHggEFOq8xfNF_QNj4afiGlc1Yze/view'};
   const chapters = {18: {author:'Montesquieu',week:1},12:{author:'Isaac Newton',week:2},21:{author:'Émilie Du Châtelet',week:2}};
   function element(tag, content, className) { const e = document.createElement(tag); if(content !== undefined) e.textContent = content; if(className) e.className = className; return e; }
   function link(name, href) { const e = element('a', name); e.href = href; if(href.startsWith('https:')) { e.target = '_blank'; e.rel = 'noopener noreferrer'; } return e; }
   function paragraphs(value, parent = text) { for(const paragraph of value.split(/\n\s*\n/).filter(p => p.trim())) parent.append(element('p', paragraph)); }
   function showSources() {
-    context.textContent = 'Enlightenment · Reading sources'; label.textContent = 'READING LIBRARY'; title.textContent = 'Sources & text licence'; note.textContent = 'Assignments checked against Canvas on 7 September 2026.';
+    context.textContent = 'Enlightenment · Reading sources'; label.textContent = 'READING LIBRARY'; title.textContent = 'Sources & text licence'; note.textContent = 'Assignments checked against Canvas on 8 September 2026. Edition details appear on each weekly reading.';
     const box = element('div',undefined,'source-summary');
     box.append(element('h2','Reading assignments'));
     const list = element('ul');
     for(const [name,url] of [['Week 1: Hume Parts 1–3; anthology chapter 18',week1],['Week 2: Hume Parts 4–6; anthology chapters 12 and 21',week2]]) {const li=element('li');li.append(link(name,url));list.append(li);}
     box.append(list,element('h2','Hume’s complete text'),element('p','David Hume, Dialogues Concerning Natural Religion. Project Gutenberg ebook 4583. Produced by Col Choat; HTML version by Al Haines. The preface and all twelve parts are included. Text is reproduced from the source without summaries or modernization; its paragraph breaks are retained. This edition has no matching print-page numbering.'));
-    box.append(link('Open the original ebook',source),element('h2','A New Modern Philosophy'),element('p','Eugene Marshall and Susanne Sreedhar (eds.), A New Modern Philosophy: The Inclusive Anthology of Primary Sources, first edition, Routledge, 2019. The assigned chapters link directly to EUR’s Ebook Central copy. Add the chapter PDFs downloaded there to read them inside this app. Saved PDFs belong to your signed-in account. A later edition or another translation has not been substituted.'));
+    box.append(link('Open the original ebook',source),element('h2','A New Modern Philosophy'),element('p','Eugene Marshall and Susanne Sreedhar (eds.), A New Modern Philosophy: The Inclusive Anthology of Primary Sources, first edition, Routledge, 2019. The weekly lists open the collected chapter PDFs in Drive. Hume and Spinoza use labelled section-matched alternatives with boundary buffers. Each reading shows its assigned scope and saved edition. The original Week 1–2 PDF-import screens remain available through their existing links.'));
     text.append(box);
     const licence=element('details',undefined,'licence');licence.append(element('summary','Project Gutenberg notice and full licence'));licence.append(element('div',book.notice+'\n\n'+book.licence,'source-text'));text.append(licence);
   }
@@ -38,7 +39,7 @@
     panel.append(element('h2',saved.get(number)?'Your saved chapter':'Read the assigned chapter'));
     const readingUrl = `https://ebookcentral-proquest-com.eur.idm.oclc.org/lib/eur/reader.action?docID=5725896&ppg=${pages[number]}`;
     const links=element('div',undefined,'resource-links');
-    links.append(link('Read through EUR',readingUrl),link('Get chapter PDF',catalogue));
+    links.append(link('Open collected chapter in Drive',driveChapters[number]),link('Read through EUR',readingUrl));
     panel.append(links);
     if (saved.get(number)) {
       const open=link('Open saved PDF',`/api/readings/${number}/pdf`);open.target='_blank';open.rel='noopener';
@@ -46,7 +47,7 @@
       links.prepend(open,download);
       const frame=element('iframe',undefined,'pdf-reader');frame.title=`Chapter ${number}: ${chapter.author}`;frame.src=`/api/readings/${number}/pdf`;frame.setAttribute('sandbox','');
       panel.append(frame);
-    } else panel.append(element('p','Download this chapter from the 2019 edition in Ebook Central, then add its PDF here. Ebook Central asks for a separate account when downloading.'));
+    } else panel.append(element('p','Your collected chapter is available in Drive above. You can optionally add a separate copy to the in-app PDF reader below.'));
     const form=element('form',undefined,'pdf-import');
     const fileLabel=element('label',saved.get(number)?'Replace chapter PDF':'Add chapter PDF');
     const input=element('input');input.type='file';input.accept='application/pdf,.pdf';input.id=`chapter-file-${number}`;input.required=true;fileLabel.htmlFor=input.id;
@@ -72,15 +73,19 @@
   }
   function render() {
     if(!book) {text.replaceChildren(element('p','The book could not be loaded. Use the complete-text download above.','unavailable'));return;}
-    let key=location.hash.slice(1)||'hume-1';
-    if(!book.sections[key] && key!=='sources' && !/^anthology-(18|12|21)$/.test(key)) key='hume-1';
+    let key=location.hash.slice(1)||'study-enlightenment-1';
+    if(!book.sections[key] && key!=='sources' && key!=='needed' && !/^study-(enlightenment|moral)-[1-8]$/.test(key) && !/^anthology-(18|12|21)$/.test(key)) key='study-enlightenment-1';
     text.replaceChildren();navigation.replaceChildren();
+    document.getElementById('reading').classList.remove('study-surface');
+    document.getElementById('hume-download').hidden=false;
     document.querySelectorAll('.reading-link').forEach(a=>{if(a.hash==='#'+key)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
-    if(key==='sources') showSources();
+    if(window.STUDY.render(key)) {}
+    else if(key==='sources') showSources();
     else if(key.startsWith('anthology-')) showAnthology(Number(key.split('-')[1]));
     else {
       const section=book.sections[key];title.textContent=section.title;label.textContent='DAVID HUME · DIALOGUES CONCERNING NATURAL RELIGION';
-      const index=book.order.indexOf(key);const part=Number(key.split('-')[1]);context.textContent=part>=1&&part<=3?'Week 1 · Tutorial reading':part>=4&&part<=6?'Week 2 · Tutorial reading':'Enlightenment · Complete Hume text';
+      const index=book.order.indexOf(key);const part=Number(key.split('-')[1]);context.textContent=part>=1&&part<=12?`Week ${Math.ceil(part/3)} · Tutorial reading`:'Enlightenment · Complete Hume text';
+      if(part>=1&&part<=12)text.append(link('← Back to Week '+Math.ceil(part/3),'#study-enlightenment-'+Math.ceil(part/3)));
       note.textContent=key==='hume-preface'?'Pamphilus to Hermippus':'Original text · Complete book available';paragraphs(section.text);
       if(index>0)navigation.append(link('← '+book.sections[book.order[index-1]].title,'#'+book.order[index-1]));
       if(index<book.order.length-1)navigation.append(link(book.sections[book.order[index+1]].title+' →','#'+book.order[index+1]));
