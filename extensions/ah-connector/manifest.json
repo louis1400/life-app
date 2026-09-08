@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "life-app · Albert Heijn",
+  "version": "0.2.0",
+  "description": "Connect your life-app refill list to your Albert Heijn basket in this browser.",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "scripting"],
+  "host_permissions": [
+    "https://www.ah.nl/*",
+    "https://life-app-louis.louis-nijholt.chatgpt.site/*"
+  ],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "content_scripts": [{
+    "matches": ["https://life-app-louis.louis-nijholt.chatgpt.site/*"],
+    "js": ["life-app.js"],
+    "run_at": "document_idle",
+    "all_frames": false
+  }],
+  "action": {"default_title": "Open life-app groceries"}
+}
