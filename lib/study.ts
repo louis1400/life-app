@@ -7,6 +7,7 @@ import hume from "../modules/study/dist/hume-data.js?raw";
 import book from "../modules/study/dist/books/hume-dialogues-complete.txt?raw";
 
 const data = JSON.parse(curriculum.replace(/^window.STUDY_CURRICULUM = /, "").replace(/;\s*$/, ""));
+export const studyCourses: {id:string;name:string;weeks:{number:number;title:string;readings:{id:string;title:string}[]}[]}[] = data.courses;
 export const readingIds = new Set<string>(data.courses.flatMap((c: { weeks: { readings: { id: string }[] }[] }) => c.weeks.flatMap(w => w.readings.map(r => r.id))));
 
 // Keep upstream Study sources intact. The bridge only adapts its frame and navigation.

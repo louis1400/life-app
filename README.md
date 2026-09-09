@@ -16,13 +16,13 @@ Open <http://127.0.0.1:5178>. The development server uses an isolated local prev
 
 | Area | Route | Retained features |
 | --- | --- | --- |
-| Home | `/` | Module navigation, saved study session, selection and archive summaries |
+| Home | `/` | Quick capture, saved current weeks, session continuation, shared list summary |
 | Study | `/study` | Coursework plans, reading progress, notes, resumable sessions, Hume reader |
-| Groceries | `/groceries` | Original 13 products, persistent pack selection, estimated total, AH handoff |
-| Stock tracking | `/groceries/stock` | Pack observations, usage estimates, refill drafts, undo |
+| Groceries | `/groceries` | Original 13 products, shared saved quantities, estimated total, AH handoff |
+| Stock tracking | `/groceries/stock` | Pack observations, usage estimates, shared shopping list, undo |
 | Vault | `/vault` | Search, collections, editing, uploads, Drive and capture setup |
 
-The shared shell provides desktop navigation, mobile bottom navigation, and common design tokens. Study remains an intact embedded module so its feature branch can continue independently. `/stock` redirects to the new stock route.
+The shared shell provides desktop navigation, mobile bottom navigation, and common design tokens. Study remains an embedded module; its refresh and returning-session behavior is improved in the UX branch. `/stock` redirects to the new stock route.
 
 ## Checks
 
@@ -31,7 +31,9 @@ npm test
 npx tsc --noEmit
 ```
 
-The suite builds the combined Worker and runs 36 tests covering the original grocery, connector, archive, and study behavior, plus shared routes, persistence, access isolation, and the local preview boundary. Browser acceptance is separate; see the [integration report](docs/life-integration.md) for the flows inspected and external checks still blocked.
+The suite builds the combined Worker and runs 39 tests covering the original grocery, connector, archive, and study behavior, plus shared routes, persistence, access isolation, and the local preview boundary. Browser acceptance is separate; see the [integration report](docs/life-integration.md) for the flows inspected and external checks still blocked.
+
+See [the UX change record](docs/ux-improvements.md) for the latest flows, legacy-list import, and focused regression checks.
 
 ## Current boundaries
 
