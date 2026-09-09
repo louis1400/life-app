@@ -69,3 +69,23 @@ test("API persists an observation and rejects anonymous, cross-site and stale wr
   const crossSite=await call("/api/groceries",{method:"POST",headers:{...headers,origin:"https://elsewhere.test"},body:JSON.stringify(body)});assert.equal(crossSite.status,403);
   const other=await call("/api/groceries",{headers:{...headers,"oai-authenticated-user-id":"user-two"}});assert.deepEqual((await other.json()).events,[]);
 });
+
+test('Home summarizes saved weeks and the shared shopping list without leaking another owner or full notes',async()=>{
+  assert.equal((await call('/api/home')).status,401);
+  const headers={'oai-authenticated-user-id':'ux-owner','Content-Type':'application/json',origin:'https://life.test'};
+  const save=async(id,data,version=0)=>call('/api/coursework/'+encodeURIComponent(id),{method:'PUT',headers,body:JSON.stringify({version,data})});
+  assert.equal((await save('plan:enlightenment',{week:3,chatUrl:''})).status,200);
+  assert.equal((await save('reading:enlightenment-1-0',{progress:'in-progress',notes:'PRIVATE FULL NOTE',resume:'Paragraph four',chatUrl:''})).status,200);
+  const quantity={id:crypto.randomUUID(),productId:'wi505041',version:0,action:{kind:'queue',count:2},occurredOn:'2026-09-09'};
+  const stockSave=await call('/api/groceries',{method:'POST',headers,body:JSON.stringify(quantity)});assert.equal(stockSave.status,200);
+  const stock=(await stockSave.json()).events;
+  let home=await (await call('/api/home',{headers})).json();
+  assert.equal(home.study.courses.find(c=>c.id==='enlightenment').week,3);
+  assert.equal(home.study.resume.href,'/study#session-enlightenment-1-0');
+  assert.equal(home.study.resume.note,'Paragraph four');assert.equal(home.groceries.packs,2);
+  assert.ok(!JSON.stringify(home).includes('PRIVATE FULL NOTE'));
+  // A shopping-page quantity update uses the version produced by stock tracking.
+  assert.equal((await call('/api/groceries',{method:'POST',headers,body:JSON.stringify({...quantity,id:crypto.randomUUID(),version:stock.at(-1).seq,action:{kind:'queue',count:5}})})).status,200);
+  home=await (await call('/api/home',{headers})).json();assert.equal(home.groceries.packs,5);
+  const other=await (await call('/api/home',{headers:{...headers,'oai-authenticated-user-id':'ux-other'}})).json();assert.equal(other.groceries.packs,0);assert.equal(other.study.resume,null);assert.equal(other.vault.count,0);assert.ok(other.study.courses.every(c=>c.week===null));
+});
