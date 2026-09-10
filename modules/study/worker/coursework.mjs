@@ -36,7 +36,8 @@ export async function courseworkApi(request, env, readingIds) {
     if(path==='/api/coursework'&&request.method==='GET') {
       const result=await db.prepare('SELECT entry_id, data, version, updated_at FROM coursework_entries WHERE owner_id = ? ORDER BY updated_at DESC LIMIT 1001').bind(user).all();
       if(result.results.length>1000)return cwJson({error:'Your coursework history is too large to load safely. No changes were made.'},503);
-      return cwJson({entries:result.results.map(r=>({id:r.entry_id,data:JSON.parse(r.data),version:r.version,updatedAt:r.updated_at}))});
+      const draftScope=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(user))),b=>b.toString(16).padStart(2,'0')).join('');
+      return cwJson({draftScope,entries:result.results.map(r=>({id:r.entry_id,data:JSON.parse(r.data),version:r.version,updatedAt:r.updated_at}))});
     }
     const match=path.match(/^\/api\/coursework\/([^/]+)$/);if(!match)return cwJson({error:'Not found.'},404);
     if(request.method!=='PUT')return cwJson({error:'Method not allowed.'},405);

@@ -17,7 +17,7 @@ function fixture(email = 'louisnijholt@gmail.com') {
         getDescription() { return this.description; },
         setDescription(value) { this.description = value; },
         isTrashed() { return this.trashed; }, setTrashed(value) { this.trashed = value; },
-        getUrl: () => 'https://drive.google.com/file/d/test/view' };
+        getId:()=> 'exported_file_123',getName:()=>filename,getMimeType:()=> 'text/plain',getSize:()=>content.length,getBlob:()=>({getDataAsString:()=>content}),getUrl: () => 'https://drive.google.com/file/d/test/view' };
       items.push(file); return file;
     }
   }));
@@ -72,4 +72,12 @@ test('social posts stay undecided and lookalike video domains do not count as Yo
   assert.equal(c.suggest_('https://instagram.com/p/example', c.folders_()), '0');
   assert.equal(c.suggest_('https://youtube.com.evil.example/video', c.folders_()), '2');
   assert.equal(c.suggest_('https://example.org', c.folders_()), '2');
+});
+
+
+test('capture export retains the chosen folder and metadata without moving or modifying the source',()=>{
+ const {context:c,items}=fixture();c.saveBookmark({url:'https://example.org/phone',title:'Phone find',folderId:'3',tags:'original, phone'});
+ const before=JSON.stringify(items);const exported=JSON.parse(JSON.stringify(c.exportVaultCaptures()));
+ assert.equal(exported.format,'life-archive/captures-v1');assert.equal(exported.records[0].folder,'My collection');assert.equal(exported.records[0].title,'Phone find');assert.deepEqual(exported.records[0].tags,['original','phone']);assert.equal(exported.records[0].driveFileId,'exported_file_123');assert.equal(JSON.stringify(items),before);
+ assert.throws(()=>fixture('other@example.com').context.exportVaultCaptures(),/signed in/);
 });

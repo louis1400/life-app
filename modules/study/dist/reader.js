@@ -71,7 +71,14 @@
     text.append(element('p','Eugene Marshall and Susanne Sreedhar (eds.), A New Modern Philosophy: The Inclusive Anthology of Primary Sources. Routledge, 2019.','citation'));
     text.append(link(`View Week ${chapter.week} assignment`,chapter.week===1?week1:week2));
   }
-  function render() {
+  function render(preserve = false) {
+    const scroller=document.getElementById('main-scroll');
+    const scroll={main:scroller.scrollTop,window:window.scrollY};
+    const tab=preserve?document.querySelector('.session-tabs [aria-selected="true"]')?.id:null;
+    const details=preserve?new Map([...text.querySelectorAll('details')].map(node=>[node.querySelector('summary')?.textContent,node.open])):null;
+    const active=document.activeElement;
+    const focus=preserve&&text.contains(active)?{id:active.id,label:active.getAttribute('aria-label'),field:active.getAttribute('data-draft-field'),start:active.selectionStart,end:active.selectionEnd}:null;
+    const readingScroll=preserve?text.querySelector('.panel-Reading')?.scrollTop:0;
     if(!book) {text.replaceChildren(element('p','The book could not be loaded. Use the complete-text download above.','unavailable'));return;}
     let key=location.hash.slice(1)||'coursework';
     if(!book.sections[key] && key!=='sources' && key!=='needed' && key!=='coursework' && !/^session-(enlightenment|moral)-[1-8]-[0-9]+$/.test(key) && !/^study-(enlightenment|moral)-[1-8]$/.test(key) && !/^anthology-(18|12|21)$/.test(key)) key='coursework';
@@ -93,8 +100,16 @@
       else navigation.append(link('Sources & text licence','#sources'));
     }
     document.title=`${title.textContent} · Study · Life App`;
-    document.getElementById('main-scroll').scrollTop=0;
-    if(window.matchMedia('(max-width: 850px)').matches) {library.open=false;window.scrollTo(0,0);}
+    if(preserve){
+      for(const node of text.querySelectorAll('details')){const key=node.querySelector('summary')?.textContent;if(details.has(key))node.open=details.get(key);}
+      if(tab)document.getElementById(tab)?.click();
+      const panel=text.querySelector('.panel-Reading');if(panel)panel.scrollTop=readingScroll||0;
+      if(focus){const target=[...text.querySelectorAll('input,textarea,select,button,a')].find(node=>focus.id?node.id===focus.id:focus.field?node.getAttribute('data-draft-field')===focus.field:focus.label&&node.getAttribute('aria-label')===focus.label);target?.focus({preventScroll:true});if(target?.setSelectionRange&&focus.start!==null){try{target.setSelectionRange(focus.start,focus.end);}catch{}}}
+      scroller.scrollTop=scroll.main;window.scrollTo(0,scroll.window);
+    }else{
+      scroller.scrollTop=0;
+      if(window.matchMedia('(max-width: 850px)').matches){library.open=false;window.scrollTo(0,0);}
+    }
   }
   function updateBadges() {
     for(const number of Object.keys(chapters)) {
@@ -114,6 +129,6 @@
     if(location.hash.startsWith('#anthology-'))render();
   }
   updateBadges();render();loadSaved();
-  window.addEventListener('courseworkchange',()=>render());
+  window.addEventListener('courseworkchange',()=>render(true));
   window.addEventListener('hashchange',()=>{render();document.getElementById('reading').focus({preventScroll:true});});
 })();

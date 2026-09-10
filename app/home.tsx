@@ -1,59 +1,32 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import { ArrowRight, BookOpen, ShoppingBasket, Archive, Clock3 } from "lucide-react";
-import { PRODUCTS } from "@/lib/groceries/catalog";
-
-type Overview = { coursework: number | null; vault: number | null; progress: number | null };
-type CourseworkResponse = { entries: { id: string; data: { progress?: string } }[] };
-type VaultResponse = { items: unknown[] };
+import { ArrowRight, BookOpen, ShoppingBasket, Archive, ListTodo, Plus } from "lucide-react";
+import QuickCapture from "./quick-capture";
+import type { HomeOverview } from "@/lib/home";
 
 export default function Home() {
-  const [overview, setOverview] = useState<Overview>({ coursework: null, vault: null, progress: null });
-  const [packs, setPacks] = useState<number | null>(null);
-  useEffect(() => {
-    let alive = true;
-    try {
-      const selected = JSON.parse(localStorage.getItem("life-app:ah-selection:v1") || "{}");
-      setPacks(PRODUCTS.reduce((sum, p) => sum + (Number.isInteger(selected?.[p.id]) ? Math.max(0, Math.min(99, selected[p.id])) : 0), 0));
-    } catch { setPacks(0); }
-    async function load() {
-      const results = await Promise.allSettled([
-        fetch("/api/coursework").then(async r => { if (!r.ok) throw Error(); return r.json() as Promise<CourseworkResponse>; }),
-        fetch("/api/items").then(async r => { if (!r.ok) throw Error(); return r.json() as Promise<VaultResponse>; }),
-      ]);
-      if (!alive) return;
-      const coursework = results[0].status === "fulfilled" ? results[0].value.entries : null;
-      setOverview({ coursework: coursework?.filter(e => e.id.startsWith("session:")).length ?? null, progress: coursework?.filter(e => e.id.startsWith("reading:") && e.data.progress === "done").length ?? null, vault: results[1].status === "fulfilled" ? results[1].value.items.length : null });
-    }
-    load();
-    return () => { alive = false; };
-  }, []);
-  return <main className="life-home">
-    <div className="life-home-heading"><p className="life-kicker">YOUR EVERYDAY SPACE</p><h1>What’s on your mind?</h1><p>Pick up your studies, restock the essentials, or revisit a saved find.</p></div>
-    <div className="life-module-grid">
-      <section className="life-module-card life-study-card">
-        <div className="life-card-heading"><span className="life-module-icon"><BookOpen size={24}/></span><span className="life-card-number">01</span></div>
-        <h2>Study</h2><p className="life-card-description">Your coursework, with a place for every reading and thought.</p>
-        <div className="life-study-courses"><a href="/study#study-enlightenment-1"><span>Enlightenment</span><span>Weeks 1–8 <ArrowRight size={15}/></span></a><a href="/study#study-moral-1"><span>Moral Philosophy</span><span>Weeks 1–8 <ArrowRight size={15}/></span></a></div>
-        <div className="life-card-meta"><Clock3 size={15}/>{overview.progress === null ? "Open Study to load your progress" : `${overview.progress} ${overview.progress === 1 ? "reading" : "readings"} completed · ${overview.coursework} saved ${overview.coursework === 1 ? "session" : "sessions"}`}</div>
-        <a className="life-card-action" href="/study">Open Study <ArrowRight size={18}/></a>
+  const [overview,setOverview]=useState<HomeOverview|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState("");
+  async function load(){try{const response=await fetch('/api/home',{cache:'no-store'});if(!response.ok)throw Error('Your overview could not be loaded.');setOverview(await response.json() as HomeOverview);setError('');}catch(e){setError(e instanceof Error?e.message:'Your overview could not be loaded.');}finally{setLoading(false);}}
+  useEffect(()=>{void load();const focus=()=>void load();window.addEventListener('focus',focus);return()=>window.removeEventListener('focus',focus);},[]);
+  const euro=(cents:number)=>new Intl.NumberFormat('nl-NL',{style:'currency',currency:'EUR'}).format(cents/100);
+  return <main className="life-home life-working-home">
+    <div className="life-home-heading"><h1>Home</h1></div>
+    <QuickCapture onSaved={()=>void load()}/>
+    {error&&<p className="home-error" role="alert">{error} <button onClick={()=>void load()}>Try again</button></p>}
+    <div className="life-task-list">
+      <section className="life-task life-task-todo">
+        <div className="life-task-heading"><ListTodo size={22}/><h2>To-do</h2><a href="/todo">All tasks <ArrowRight size={16}/></a></div>
+        <p className="life-todo-count">{loading?'Loading your tasks…':overview?.todo?overview.todo.count?`${overview.todo.count} open ${overview.todo.count===1?'task':'tasks'}`:'All clear — nothing to do.':'Tasks are unavailable. Open To-do to retry.'}</p>
+        {overview?.todo?.tasks.map(task=><a className="life-todo-preview" key={task.id} href={'/todo?task='+encodeURIComponent(task.id)}><span>{task.title}</span><ArrowRight size={17}/></a>)}
+        <a className="life-task-secondary life-todo-add" href="/todo?add=1"><Plus size={17}/> Add a task</a>
       </section>
-      <section className="life-module-card life-grocery-card">
-        <div className="life-card-heading"><span className="life-module-icon"><ShoppingBasket size={24}/></span><span className="life-card-number">02</span></div>
-        <h2>Groceries</h2><p className="life-card-description">Your Albert Heijn essentials, ready for the next refill.</p>
-        <div className="life-product-strip" aria-label="Some of your essentials">{PRODUCTS.slice(0, 3).map(p => <img key={p.id} src={p.image} alt={p.shortName} width={62} height={76}/>)}</div>
-        <div className="life-card-meta">{PRODUCTS.length} essentials · {packs === null ? "Loading selection…" : `${packs} ${packs === 1 ? "pack" : "packs"} selected`}</div>
-        <a className="life-card-action" href="/groceries">Plan groceries <ArrowRight size={18}/></a>
+      <section className="life-task life-task-study">
+        <div className="life-task-heading"><BookOpen size={22}/><h2>Study</h2><a href="/study">All coursework <ArrowRight size={16}/></a></div>
+        {overview?.study?.resume&&<a className="life-resume" href={overview.study.resume.href}><span className="life-resume-label">Continue studying</span><strong>{overview.study.resume.title}</strong>{overview.study.resume.note&&<span className="life-resume-note">{overview.study.resume.note}</span>}<ArrowRight size={20}/></a>}
+        <div className="life-current-courses">{(overview?.study?.courses||[{id:'enlightenment',name:'Enlightenment',week:null,title:null,done:0,total:0},{id:'moral',name:'Moral Philosophy',week:null,title:null,done:0,total:0}]).map(c=><a key={c.id} href={c.week?`/study#study-${c.id}-${c.week}`:'/study#coursework'}><div><strong>{c.name}</strong><span>{loading?'Loading your week…':!overview?.study?'Open Study to load your week':c.week?`Week ${c.week} · ${c.done}/${c.total} readings done`:'Set your teaching week'}</span>{c.title&&<small>{c.title}</small>}</div><ArrowRight size={17}/></a>)}</div>
       </section>
-      <section className="life-module-card life-vault-card">
-        <div className="life-card-heading"><span className="life-module-icon"><Archive size={24}/></span><span className="life-card-number">03</span></div>
-        <h2>Vault</h2><p className="life-card-description">The articles, memes, files, and ideas you want to keep.</p>
-        <div className="life-collection-list"><span>Reading</span><span>Study</span><span>Reactions</span><span>Watch later</span></div>
-        <div className="life-card-meta">{overview.vault === null ? "Open Vault to load your collection" : `${overview.vault} saved ${overview.vault === 1 ? "find" : "finds"}`}</div>
-        <a className="life-card-action" href="/vault">Open Vault <ArrowRight size={18}/></a>
-      </section>
+      <section className="life-task life-task-groceries"><div className="life-task-heading"><ShoppingBasket size={22}/><h2>Groceries</h2></div><a className="life-task-action" href="/groceries"><div><strong>Open shopping list</strong><span>{loading?'Loading your list…':overview?.groceries?`${overview.groceries.packs} packs · ${euro(overview.groceries.total)} estimated`:'Open Groceries to load your list'}</span></div><ArrowRight size={20}/></a><a className="life-task-secondary" href="/groceries/stock">At home · log usage and stock</a></section>
+      <section className="life-task life-task-vault"><div className="life-task-heading"><Archive size={22}/><h2>Vault</h2></div><a className="life-task-action" href="/vault"><div><strong>Find something saved</strong><span>{loading?'Loading your archive…':overview?.vault?`${overview.vault.count} saved items`:'Open Vault to load your items'}</span></div><ArrowRight size={20}/></a>{overview?.vault?.latest&&<a className="life-task-secondary" href={'/vault?item='+encodeURIComponent(overview.vault.latest.id)}>Last saved: {overview.vault.latest.title}</a>}</section>
     </div>
-    <div className="life-home-secondary"><span>{process.env.NODE_ENV === "development" ? "Preview data stays on this computer. Your live app data is separate." : "Your personal space, all in one place."}</span><a href="/groceries/stock">Track what’s running low <ArrowRight size={16}/></a></div>
   </main>;
 }

@@ -19,7 +19,7 @@ function settings() {
   return env as unknown as Required<Settings>;
 }
 function hex(bytes:Uint8Array){return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}
-async function digest(value:string){return hex(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))));}
+export async function digest(value:string){return hex(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))));}
 async function key(){const raw=settings().GOOGLE_DRIVE_TOKEN_KEY;return crypto.subtle.importKey('raw',Uint8Array.from(raw.match(/../g)!,x=>parseInt(x,16)),{name:'AES-GCM'},false,['encrypt','decrypt']);}
 export async function encryptToken(token:string,user:string){
   const iv=crypto.getRandomValues(new Uint8Array(12));
@@ -117,12 +117,19 @@ export async function disconnectDrive(user:string){
   // Files remain in Drive. Google Account settings can revoke the grant itself.
   await db().batch([db().prepare('UPDATE drive_connections SET refresh_token=NULL WHERE owner=?').bind(user),db().prepare('DELETE FROM drive_oauth_states WHERE owner=?').bind(user)]);
 }
-export async function uploadArtifact(client:DriveClient,id:string,details:Record<string,unknown>,file:File|null){
+export type UploadFile=Pick<File,'name'|'size'|'type'|'stream'>;
+export async function uploadArtifact(client:DriveClient,id:string,details:Record<string,unknown>,file:UploadFile|null, reservedId?:string){
+  if(reservedId){
+    try{const existing=await (await client.fetch('/files/'+encodeURIComponent(reservedId)+'?fields=id,webViewLink,trashed,appProperties')).json() as DriveFile & {appProperties?:{archiveId?:string}};
+      if(existing.trashed||existing.appProperties?.archiveId!==id)throw new ApiError('The reserved Drive file could not be verified.',409);
+      return {id:existing.id,url:fileLink(existing),accountId:client.connection.account_id};
+    }catch(error){if(!(error instanceof ApiError&&error.status===404))throw error;}
+  }
   const folder=await (await client.fetch('/files/'+encodeURIComponent(client.connection.folder_id)+'?fields=id,mimeType,trashed')).json() as DriveFile;
   if(folder.trashed||folder.mimeType!=='application/vnd.google-apps.folder')throw new ApiError('Your Life Archive folder is unavailable. Restore it in Google Drive or reconnect.',409);
   const blob=file||new Blob([JSON.stringify({format:'life-archive/bookmark-v1',id,...details},null,2)],{type:'application/json'});
   const mime=blob.type||'application/octet-stream';
-  const metadata={name:file?.name||String(details.title).slice(0,150)+'.bookmark.json',parents:[folder.id],description:String(details.note||''),appProperties:{archiveId:id,artifactKind:String(details.kind)}};
+  const metadata={...(reservedId?{id:reservedId}:{}),name:file?.name||String(details.title).slice(0,150)+'.bookmark.json',parents:[folder.id],description:String(details.note||''),appProperties:{archiveId:id,artifactKind:String(details.kind)}};
   const start=await checkResponse(await requestGoogle(UPLOAD+'?uploadType=resumable&fields=id,webViewLink',{method:'POST',headers:{Authorization:'Bearer '+client.token,'Content-Type':'application/json','X-Upload-Content-Type':mime,'X-Upload-Content-Length':String(blob.size)},body:JSON.stringify(metadata)}));
   const location=start.headers.get('Location');let session:URL;try{session=new URL(location||'');}catch{throw new ApiError('Google Drive did not start the upload.',502);}
   if(session.origin!=='https://www.googleapis.com'||!session.pathname.startsWith('/upload/drive/v3/files'))throw new ApiError('Google Drive returned an invalid upload destination.',502);
@@ -141,4 +148,10 @@ export async function updateArtifact(client:DriveClient,row:any,details:Record<s
 export async function trashArtifact(client:DriveClient,id:string){
   try{await client.fetch('/files/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})});}
   catch(e){if(!(e instanceof ApiError&&e.status===404))throw e;}
+}
+
+export async function reserveFileId(client:DriveClient){
+ const result=await (await client.fetch('/files/generateIds?count=1&space=drive&type=files')).json() as {ids?:string[]};
+ if(!result.ids?.[0])throw new ApiError('Google Drive could not prepare the save.',502);
+ return result.ids[0];
 }
