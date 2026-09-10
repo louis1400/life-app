@@ -1,0 +1,38 @@
+name: Life app checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - integration/life-app
+      - codex/verified-baseline
+
+permissions:
+  contents: read
+
+concurrency:
+  group: life-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build, tests, types and startup
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Build and run regression checks
+        run: npm run check
+      - name: Apply migrations to an isolated local database
+        run: npm run db:local
+      - name: Verify app startup and shared routes
+        run: npm run test:startup

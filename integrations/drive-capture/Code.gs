@@ -82,3 +82,23 @@ function saveBookmark(input) {
     return { duplicate: false, folder: folder.name, fileUrl: file.getUrl() };
   } finally { lock.releaseLock(); }
 }
+
+// Metadata export only. Original files and folder choices are never changed.
+function exportVaultCaptures() {
+  owner_();
+  const records = [];
+  for (const folder of folders_()) {
+    const files = DriveApp.getFolderById(folder.id).getFiles();
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file.isTrashed() || file.getMimeType() !== MimeType.PLAIN_TEXT || file.getSize() > 100000 || !/\nArchive link ID: [a-f0-9]{64}$/.test(file.getDescription())) continue;
+      const lines = file.getBlob().getDataAsString().split(/\r?\n/);
+      const link = lines[2];
+      try { parseLink_(link); } catch (_) { continue; }
+      const tagsLine = lines.find(line => line.indexOf('Tags: ') === 0) || '';
+      const savedLine = lines.find(line => line.indexOf('Saved: ') === 0) || '';
+      records.push({driveFileId:file.getId(),folder:folder.name,title:lines[0]||file.getName(),url:link,tags:tagsLine.slice(6).split(',').map(t=>t.trim()).filter(Boolean),savedAt:savedLine.slice(7)});
+    }
+  }
+  return {format:'life-archive/captures-v1',records:records};
+}

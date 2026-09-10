@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowRight, BookOpen, ShoppingBasket, Archive } from "lucide-react";
+import { ArrowRight, BookOpen, ShoppingBasket, Archive, ListTodo, Plus } from "lucide-react";
 import QuickCapture from "./quick-capture";
 import type { HomeOverview } from "@/lib/home";
 
@@ -14,6 +14,12 @@ export default function Home() {
     <QuickCapture onSaved={()=>void load()}/>
     {error&&<p className="home-error" role="alert">{error} <button onClick={()=>void load()}>Try again</button></p>}
     <div className="life-task-list">
+      <section className="life-task life-task-todo">
+        <div className="life-task-heading"><ListTodo size={22}/><h2>To-do</h2><a href="/todo">All tasks <ArrowRight size={16}/></a></div>
+        <p className="life-todo-count">{loading?'Loading your tasks…':overview?.todo?overview.todo.count?`${overview.todo.count} open ${overview.todo.count===1?'task':'tasks'}`:'All clear — nothing to do.':'Tasks are unavailable. Open To-do to retry.'}</p>
+        {overview?.todo?.tasks.map(task=><a className="life-todo-preview" key={task.id} href={'/todo?task='+encodeURIComponent(task.id)}><span>{task.title}</span><ArrowRight size={17}/></a>)}
+        <a className="life-task-secondary life-todo-add" href="/todo?add=1"><Plus size={17}/> Add a task</a>
+      </section>
       <section className="life-task life-task-study">
         <div className="life-task-heading"><BookOpen size={22}/><h2>Study</h2><a href="/study">All coursework <ArrowRight size={16}/></a></div>
         {overview?.study?.resume&&<a className="life-resume" href={overview.study.resume.href}><span className="life-resume-label">Continue studying</span><strong>{overview.study.resume.title}</strong>{overview.study.resume.note&&<span className="life-resume-note">{overview.study.resume.note}</span>}<ArrowRight size={20}/></a>}

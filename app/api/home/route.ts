@@ -4,6 +4,7 @@ import { PRODUCTS } from '@/lib/groceries/catalog';
 import { stateFor } from '@/lib/groceries/model';
 import { studyCourses } from '@/lib/study';
 import type { HomeOverview } from '@/lib/home';
+import { getTaskSummary } from '@/db/todo';
 export const dynamic='force-dynamic';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
 type StudyRow={entry_id:string;week:number|null;progress:string|null;resume:string|null;updated_at:string};
@@ -19,9 +20,10 @@ export async function GET(request:Request){
       return {courses:studyCourses.map(course=>{const week=course.weeks.find(w=>w.number===byId.get('plan:'+course.id)?.week);return {id:course.id,name:course.name,week:week?.number??null,title:week?.title??null,total:week?.readings.length??0,done:week?.readings.filter(r=>byId.get('reading:'+r.id)?.progress==='done').length??0};}),resume:active?{title:active.title,href:'/study#session-'+active.id,note:sessions[0]?.resume||byId.get('reading:'+active.id)?.resume||''}:null};
     })(),
     (async()=>{const events=await getEvents(owner);return PRODUCTS.reduce((sum,p)=>{const count=stateFor(p.id,events).queuePacks;return {packs:sum.packs+count,total:sum.total+p.priceCents*count};},{packs:0,total:0});})(),
-    (async()=>{const {results:counts}=await db().prepare('SELECT COUNT(*) AS count FROM archive_items WHERE owner=?').bind(owner).all<{count:number}>();const {results:latest}=await db().prepare('SELECT id,title FROM archive_items WHERE owner=? ORDER BY created_at DESC LIMIT 1').bind(owner).all<{id:string;title:string}>();return {count:counts[0]?.count??0,latest:latest[0]??null};})(),
+    (async()=>{const {results:counts}=await db().prepare('SELECT COUNT(*) AS count FROM archive_items WHERE owner=? AND deleted=0').bind(owner).all<{count:number}>();const {results:latest}=await db().prepare('SELECT id,title FROM archive_items WHERE owner=? AND deleted=0 ORDER BY created_at DESC LIMIT 1').bind(owner).all<{id:string;title:string}>();return {count:counts[0]?.count??0,latest:latest[0]??null};})(),
+    getTaskSummary(owner),
   ]);
-  const overview:HomeOverview={study:results[0].status==='fulfilled'?results[0].value:null,groceries:results[1].status==='fulfilled'?results[1].value:null,vault:results[2].status==='fulfilled'?results[2].value:null};
+  const overview:HomeOverview={study:results[0].status==='fulfilled'?results[0].value:null,groceries:results[1].status==='fulfilled'?results[1].value:null,vault:results[2].status==='fulfilled'?results[2].value:null,todo:results[3].status==='fulfilled'?results[3].value:null};
   for(const result of results)if(result.status==='rejected')console.error('Home summary unavailable',result.reason);
   return json(overview);
 }

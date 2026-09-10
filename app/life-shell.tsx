@@ -1,10 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { BookOpen, House, ShoppingBasket, Archive } from "lucide-react";
+import { BookOpen, House, ShoppingBasket, Archive, ListTodo } from "lucide-react";
 
 const modules = [
   { href: "/", label: "Home", icon: House },
+  { href: "/todo", label: "To-do", icon: ListTodo },
   { href: "/study", label: "Study", icon: BookOpen },
   { href: "/groceries", label: "Groceries", icon: ShoppingBasket },
   { href: "/vault", label: "Vault", icon: Archive },

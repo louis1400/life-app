@@ -1,10 +1,10 @@
 # Life app
 
-A personal home for Study, Groceries, and Vault. The `integration/life-app` branch combines the existing features without replacing their source branches.
+A personal home for To-do, Study, Groceries, and Vault. See [the development baseline](docs/development-baseline.md) for the current source, review gates, and shared inspection route.
 
 ## Run locally
 
-Use Node 22.13 or newer (tested with Node 24.19).
+Use Node 24.19.0, pinned in `.node-version` for local development and CI.
 
 ```sh
 npm ci
@@ -16,7 +16,8 @@ Open <http://127.0.0.1:5178>. The development server uses an isolated local prev
 
 | Area | Route | Retained features |
 | --- | --- | --- |
-| Home | `/` | Quick capture, saved current weeks, session continuation, shared list summary |
+| Home | `/` | Quick capture, open tasks, saved current weeks, session continuation, shared list summary |
+| To-do | `/todo` | Quick add, task notes, open/done lists, edit, delete, undo, recovered drafts |
 | Study | `/study` | Coursework plans, reading progress, notes, resumable sessions, Hume reader |
 | Groceries | `/groceries` | Original 13 products, shared saved quantities, estimated total, AH handoff |
 | Stock tracking | `/groceries/stock` | Pack observations, usage estimates, shared shopping list, undo |
@@ -27,11 +28,12 @@ The shared shell provides desktop navigation, mobile bottom navigation, and comm
 ## Checks
 
 ```sh
-npm test
-npx tsc --noEmit
+npm run check
+npm run db:local
+npm run test:startup
 ```
 
-The suite builds the combined Worker and runs 39 tests covering the original grocery, connector, archive, and study behavior, plus shared routes, persistence, access isolation, and the local preview boundary. Browser acceptance is separate; see the [integration report](docs/life-integration.md) for the flows inspected and external checks still blocked.
+`check` builds the combined Worker, runs 47 regression tests, and checks TypeScript. `test:startup` starts its own server on 5178, checks nine pages and six API routes against the migrated local database, then stops that server. Run it before starting an interactive preview; it intentionally fails if 5178 is already occupied. GitHub Actions runs these checks on PRs and pushes to the baseline branches. These checks do not replace browser acceptance or enforce branch protection by themselves.
 
 See [the UX change record](docs/ux-improvements.md) for the latest flows, legacy-list import, and focused regression checks.
 
@@ -39,8 +41,9 @@ See [the UX change record](docs/ux-improvements.md) for the latest flows, legacy
 
 - Study's AI actions open ChatGPT. Some curriculum readings are explicitly unavailable in the source module.
 - AH receives a selection through its own website; basket receipt and checkout are confirmed there. The legacy desktop extension keeps its original origin restrictions.
-- New Vault saves require Google Drive configuration and account connection. The separate iPhone capture setup is retained; files captured directly to Drive do not automatically enter the app's archive index.
-- Hosting metadata is inherited from the grocery Site. This integration has not been deployed, and existing hosted apps or data have not been changed.
+- New Vault saves require Google Drive configuration and account connection. The separate iPhone capture setup is retained; older files captured directly to Drive can be imported into the app's archive index; see [Vault reliability](docs/vault-reliability.md).
+- The integrated app has a live publication. The newer Vault reliability and To-do changes are saved separately and await publication.
+- The standalone To-do task is staged for an owner-scoped transfer on the first authenticated Home or To-do load after publication. The standalone app remains independent; see [To-do integration](docs/todo-integration.md).
 
 ## Feature development
 

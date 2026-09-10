@@ -6,12 +6,87 @@ import { readFileSync, readdirSync } from "node:fs";
 
 const sqlite=new DatabaseSync(":memory:");
 for (const migration of readdirSync(new URL("../drizzle/",import.meta.url)).filter(name=>name.endsWith(".sql")).sort()) sqlite.exec(readFileSync(new URL("../drizzle/"+migration,import.meta.url),"utf8"));
-globalThis.__groceryTestEnv={DB:{prepare(sql){let args=[];return {bind(...values){args=values;return this;},async all(){return {results:sqlite.prepare(sql).all(...args)};},async run(){const result=sqlite.prepare(sql).run(...args);return {meta:{changes:Number(result.changes)}};}};}}};
+globalThis.__groceryTestEnv={DB:{async batch(statements){sqlite.exec("BEGIN");try{const results=[];for(const statement of statements)results.push(await statement.run());sqlite.exec("COMMIT");return results;}catch(error){sqlite.exec("ROLLBACK");throw error;}},prepare(sql){let args=[];return {bind(...values){args=values;return this;},async all(){return {results:sqlite.prepare(sql).all(...args)};},async run(){const result=sqlite.prepare(sql).run(...args);return {meta:{changes:Number(result.changes)}};}};}}};
 registerHooks({resolve(specifier,context,nextResolve){if(specifier==="cloudflare:workers")return {url:"data:text/javascript,export const env = globalThis.__groceryTestEnv;",shortCircuit:true};return nextResolve(specifier,context);}});
 const worker= (await import(new URL("../dist/server/index.js",import.meta.url))).default;
 const runtimeEnv={ASSETS:{fetch:async()=>new Response("Not found",{status:404})}};
 const executionContext={waitUntil(){},passThroughOnException(){}};
 const call=(path,options={})=>worker.fetch(new Request("https://life.test"+path,options),runtimeEnv,executionContext);
+
+test('To-do persists notes, completes, reopens, deletes and undoes with isolated, versioned writes', async()=>{
+  const headers={'oai-authenticated-user-id':'todo-owner','Content-Type':'application/json',origin:'https://life.test'};
+  const post=(task,extra={})=>call('/api/todo',{method:'POST',headers:{...headers,...extra},body:JSON.stringify(task)});
+  const read=async()=> (await (await call('/api/todo',{headers})).json()).tasks;
+  const input={id:crypto.randomUUID(),title:'A real task',notes:'Private notes\nwith details',done:false,deleted:false,version:0};
+  assert.equal((await call('/api/todo')).status,401);
+  assert.equal((await call('/api/todo',{method:'POST',body:JSON.stringify(input)})).status,401);
+  assert.equal((await post(input,{origin:'https://other.test'})).status,403);
+  assert.equal((await post(input,{'sec-fetch-site':'cross-site'})).status,403);
+  assert.equal((await post({...input,title:' '})).status,400);
+  assert.equal((await post({...input,user_id:'spoofed-owner'})).status,400);
+  assert.deepEqual(await read(),[],'new accounts do not receive another person’s seed task');
+  assert.equal((await post(input)).status,200);
+  assert.equal((await post(input)).status,200,'retry after a lost create response');
+  let tasks=await read();assert.equal(tasks.length,1);assert.equal(tasks[0].version,1);assert.equal(tasks[0].notes,input.notes);
+  const payload=t=>({id:t.id,title:t.title,notes:t.notes,done:t.done,deleted:t.deleted,version:t.version});
+  let task=payload(tasks[0]);
+  const otherHeaders={...headers,'oai-authenticated-user-id':'todo-other'};
+  assert.deepEqual((await (await call('/api/todo',{headers:otherHeaders})).json()).tasks,[]);
+  assert.equal((await post({...task,title:'Other owner edit'},otherHeaders)).status,409);
+  let home=await (await call('/api/home',{headers})).json();
+  assert.equal(home.todo.count,1);assert.equal(home.todo.tasks[0].id,input.id);
+  assert.ok(!JSON.stringify(home).includes(input.notes),'Home does not expose task notes');
+  const updated={...task,title:'Updated task'};
+  assert.equal((await post(updated)).status,200);
+  assert.equal((await post({...task,notes:'stale edit'})).status,409);
+  assert.equal((await post(updated)).status,200,'lost update response is safe to retry');
+  task=payload((await read())[0]);assert.equal(task.version,2);
+  assert.equal((await post({...task,done:true})).status,200);
+  assert.equal((await (await call('/api/home',{headers})).json()).todo.count,0);
+  task=payload((await read())[0]);assert.equal((await post({...task,done:false})).status,200);
+  task=payload((await read())[0]);assert.equal((await post({...task,deleted:true})).status,200);
+  task=payload((await read())[0]);assert.equal(task.deleted,true);
+  assert.equal((await (await call('/api/home',{headers})).json()).todo.count,0);
+  assert.equal((await post({...task,deleted:false})).status,200,'undo retains title and notes');
+  assert.equal((await read())[0].notes,input.notes);
+  assert.equal((await (await call('/api/home',{headers:otherHeaders})).json()).todo.count,0);
+});
+
+test('To-do transfer preserves dates and state only for its verified owner, and cannot resurrect or overwrite tasks',async()=>{
+  const owner='transfer-owner',headers={'oai-authenticated-user-id':owner,'Content-Type':'application/json',origin:'https://life.test'};
+  const task={id:crypto.randomUUID(),title:'Existing task',notes:'Original notes',done:false,deleted:false,version:5,createdAt:'2026-09-08T14:23:55.492Z',updatedAt:'2026-09-08T14:24:09.010Z'};
+  const completed={...task,id:crypto.randomUUID(),title:'Already done',done:true};
+  const deleted={...task,id:crypto.randomUUID(),title:'Already deleted',deleted:true};
+  globalThis.__groceryTestEnv.TODO_IMPORT_SNAPSHOT=JSON.stringify({owner,tasks:[task,completed,deleted]});
+  try {
+    const outsider={'oai-authenticated-user-id':'transfer-outsider'};
+    assert.deepEqual((await (await call('/api/todo',{headers:outsider})).json()).tasks,[]);
+    const home=await (await call('/api/home',{headers})).json();assert.equal(home.todo.count,1);
+    const read=async()=> (await (await call('/api/todo',{headers})).json()).tasks;
+    let rows=await read();assert.equal(rows.length,3);assert.deepEqual(rows.find(t=>t.id===task.id),task);
+    const {createdAt,updatedAt,...input}=task;
+    assert.equal((await call('/api/todo',{method:'POST',headers,body:JSON.stringify({...input,title:'Edited after transfer',deleted:true})})).status,200);
+    rows=await read();const saved=rows.find(t=>t.id===task.id);
+    assert.equal(saved.deleted,true);assert.equal(saved.title,'Edited after transfer');assert.equal(saved.version,6);assert.equal(saved.createdAt,createdAt);
+    assert.equal((await (await call('/api/home',{headers})).json()).todo.count,0);
+    assert.equal((await read()).length,3,'repeated transfer is idempotent');
+  } finally { delete globalThis.__groceryTestEnv.TODO_IMPORT_SNAPSHOT; }
+});
+
+test('To-do returns a recoverable error when persistence fails and keeps other Home modules available',async()=>{
+  const headers={'oai-authenticated-user-id':'todo-failure','Content-Type':'application/json',origin:'https://life.test'};
+  sqlite.exec("CREATE TRIGGER todo_fail BEFORE INSERT ON todo_tasks WHEN NEW.user_id='todo-failure' BEGIN SELECT RAISE(FAIL,'test failure'); END;");
+  const input={id:crypto.randomUUID(),title:'Keep this draft',notes:'',done:false,deleted:false,version:0};
+  try {assert.equal((await call('/api/todo',{method:'POST',headers,body:JSON.stringify(input)})).status,503);}
+  finally {sqlite.exec('DROP TRIGGER todo_fail');}
+  assert.equal((await call('/api/todo',{method:'POST',headers,body:JSON.stringify(input)})).status,200);
+  const original=globalThis.__groceryTestEnv.DB.prepare;
+  globalThis.__groceryTestEnv.DB.prepare=function(sql){if(sql.includes('todo_tasks'))throw Error('test storage unavailable');return original.call(this,sql);};
+  try {
+    assert.equal((await call('/api/todo',{headers})).status,503);
+    const home=await (await call('/api/home',{headers})).json();assert.equal(home.todo,null);assert.ok(home.study);assert.ok(home.groceries);assert.ok(home.vault);
+  } finally {globalThis.__groceryTestEnv.DB.prepare=original;}
+});
 
 test("the production Worker serves the Life shell", async () => {
   const response = await worker.fetch(
@@ -35,12 +110,12 @@ test("the production Worker serves the Life shell", async () => {
     /^text\/html\b/i,
   );
   const html = await response.text();
-  for (const destination of ["/study", "/groceries", "/vault"]) assert.ok(html.includes(destination));
+  for (const destination of ["/todo", "/study", "/groceries", "/vault"]) assert.ok(html.includes(destination));
 });
 
 test("all modules share one Worker without losing coursework authorization or storage",async()=>{
   const headers={"oai-authenticated-user-id":"integration-user",origin:"https://life.test","Content-Type":"application/json"};
-  for(const path of ["/study","/groceries","/groceries/stock","/vault","/study/content"]){
+  for(const path of ["/todo","/study","/groceries","/groceries/stock","/vault","/study/content"]){
     const response=await call(path,{headers});assert.equal(response.status,200,path);
   }
   const study=await (await call('/study/content')).text();
