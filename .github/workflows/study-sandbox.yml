@@ -1,0 +1,31 @@
+name: Study sandbox browser checks
+on:
+  pull_request:
+  push:
+    branches: [codex/study-sandbox]
+permissions:
+  contents: read
+jobs:
+  study-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+      - run: node --test tests/study-sandbox.test.mjs modules/study/tests/*.test.mjs
+      - name: Install isolated browser test tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/study-browser" --no-audit --no-fund playwright@1.62.1
+          "$RUNNER_TEMP/study-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Test the actual Study screens
+        run: PLAYWRIGHT_MODULE="$RUNNER_TEMP/study-browser/node_modules/playwright" node tests/study-browser.mjs
+      - name: Export portable preview
+        if: always()
+        run: node scripts/study-sandbox.mjs --export
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: study-sandbox-review
+          path: output/
