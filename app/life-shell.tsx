@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { BookOpen, House, ShoppingBasket, Archive, ListTodo } from "lucide-react";
+import { BookOpen, House, ShoppingBasket, Archive, ListTodo, Building2 } from "lucide-react";
 
 const modules = [
   { href: "/", label: "Home", icon: House },
@@ -9,6 +9,7 @@ const modules = [
   { href: "/study", label: "Study", icon: BookOpen },
   { href: "/groceries", label: "Groceries", icon: ShoppingBasket },
   { href: "/vault", label: "Vault", icon: Archive },
+  { href: "/organizations", label: "Work", icon: Building2 },
 ];
 
 export default function LifeShell({ children }: { children: React.ReactNode }) {

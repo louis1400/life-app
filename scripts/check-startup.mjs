@@ -28,7 +28,7 @@ try {
     if (Date.now() >= deadline) throw new Error('Development server did not become ready within 60 seconds.');
     await delay(200);
   }
-  for (const path of ['/', '/todo', '/study', '/groceries', '/groceries/stock', '/vault', '/capture', '/capture/setup', '/study/content']) {
+  for (const path of ['/', '/todo', '/organizations', '/study', '/groceries', '/groceries/stock', '/vault', '/capture', '/capture/setup', '/study/content']) {
     const response = await request(path);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get('content-type') || '', /text\/html/, path);
@@ -37,7 +37,7 @@ try {
     assert.doesNotMatch(html, /Internal Server Error|Error:.*SQLITE_ERROR/, path);
     console.log('OK', path);
   }
-  for (const path of ['/api/session', '/api/home', '/api/todo', '/api/groceries', '/api/coursework', '/api/items']) {
+  for (const path of ['/api/session', '/api/home', '/api/todo', '/api/organizations', '/api/groceries', '/api/coursework', '/api/items']) {
     const response = await request(path);
     assert.equal(response.status, 200, path);
     const data = await response.json();

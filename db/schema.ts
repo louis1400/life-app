@@ -15,5 +15,6 @@ export const driveOAuthStates = sqliteTable("drive_oauth_states", {
 
 export * from "./groceries-schema";
 export * from "./todo-schema";
+export * from "./organizations-schema";
 
 export * from "../modules/study/db/schema";
