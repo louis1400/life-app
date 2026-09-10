@@ -18,6 +18,7 @@ Open <http://127.0.0.1:5178>. The development server uses an isolated local prev
 | --- | --- | --- |
 | Home | `/` | Quick capture, open tasks, saved current weeks, session continuation, shared list summary |
 | To-do | `/todo` | Quick add, task notes, open/done lists, edit, delete, undo, recovered drafts |
+| Work | `/organizations` | Employer watchlist, vacancy links, interest, notes, next steps, status and archiving |
 | Study | `/study` | Coursework plans, reading progress, notes, resumable sessions, Hume reader |
 | Groceries | `/groceries` | Original 13 products, shared saved quantities, estimated total, AH handoff |
 | Stock tracking | `/groceries/stock` | Pack observations, usage estimates, shared shopping list, undo |
