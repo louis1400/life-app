@@ -1,9 +1,11 @@
 // Run with PLAYWRIGHT_MODULE pointing to an installed Playwright entrypoint,
 // or with `playwright` installed normally. CI provisions its own browser.
 import {createRequire} from 'node:module';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
+import path from 'node:path';
 import assert from 'node:assert/strict';
-import {startSandbox} from '../scripts/study-sandbox.mjs';
+import {startSandbox,sandboxHtml} from '../scripts/study-sandbox.mjs';
 const require = createRequire(import.meta.url);
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const server = await startSandbox({port:0});
@@ -36,7 +38,7 @@ try {
     await page.screenshot({path:`output/study-browser/week-1-${width}.png`,fullPage:true});
     const hume = page.locator('.reading-card').filter({has:page.getByRole('heading',{name:'Dialogues Concerning Natural Religion',exact:true})});
     await hume.getByRole('link',{name:'Study this reading',exact:true}).click();
-    if (width < 1200) await page.getByRole('tab',{name:'Reading',exact:true}).click();
+    await page.getByRole('tab',{name:'Reading',exact:true}).click();
     await page.locator('.inline-reading').first().waitFor({state:'visible'});
     await page.getByRole('tab',{name:'Notes',exact:true}).click();
     const notes = page.getByRole('tabpanel',{name:'Notes',exact:true});
@@ -59,6 +61,27 @@ try {
     await context.close();
     console.log(`PASS ${width}px: blank start, week one, Hume reading, saved notes after reload, external handoff, layout, console`);
   }
+  const portablePath = path.resolve('output/study-sandbox.html');
+  await writeFile(portablePath,await sandboxHtml());
+  const portable = await browser.newContext();
+  const page = await portable.newPage();
+  const errors = [];
+  page.on('pageerror',error=>errors.push(error.message));
+  await portable.setOffline(true);
+  await page.goto(pathToFileURL(portablePath).href + '#session-enlightenment-1-1');
+  await page.getByText('Test progress loaded · saved only in this browser',{exact:true}).waitFor();
+  await page.getByRole('tab',{name:'Notes',exact:true}).click();
+  const notes = page.getByRole('tabpanel',{name:'Notes',exact:true});
+  await notes.getByLabel('Your notes',{exact:true}).fill('Portable offline note');
+  await notes.getByRole('button',{name:'Save',exact:true}).click();
+  await notes.getByText('Saved in this test browser',{exact:true}).waitFor();
+  await page.reload();
+  await page.getByText('Test progress loaded · saved only in this browser',{exact:true}).waitFor();
+  await page.getByRole('tab',{name:'Notes',exact:true}).click();
+  assert.equal(await page.getByLabel('Your notes',{exact:true}).inputValue(),'Portable offline note');
+  assert.deepEqual(errors,[]);
+  await portable.close();
+  console.log('PASS portable file: no server, offline, saved notes survive reload');
 } finally {
   await browser?.close();
   await new Promise(resolve=>server.close(resolve));
