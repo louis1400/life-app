@@ -11,12 +11,15 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const server = await startSandbox({port:0});
 const origin = 'http://127.0.0.1:' + server.address().port;
 let browser;
+let activePage;
 await mkdir('output/study-browser', {recursive:true});
 try {
   browser = await chromium.launch({headless:true});
   for (const width of [1440,390]) {
     const context = await browser.newContext({viewport:{width,height:900}});
     const page = await context.newPage();
+    activePage = page;
+    page.setDefaultTimeout(10000);
     const errors = [], external = [];
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', msg => {if(msg.type()==='error')errors.push(msg.text());});
@@ -28,9 +31,11 @@ try {
     await page.goto(origin+'/study');
     await page.getByText('Test progress loaded · saved only in this browser',{exact:true}).waitFor();
     assert.equal(await page.getByRole('link',{name:'Open this week',exact:true}).count(),2);
+    await page.screenshot({path:`output/study-browser/catch-up-${width}.png`,fullPage:true});
     await page.getByRole('button',{name:'Start from zero',exact:true}).click();
     await page.getByRole('button',{name:'Set week',exact:true}).first().waitFor();
     assert.equal(await page.getByRole('button',{name:'Set week',exact:true}).count(),2);
+    await page.screenshot({path:`output/study-browser/blank-${width}.png`,fullPage:true});
     const course = page.locator('.course-panel').filter({has:page.getByRole('heading',{name:'Enlightenment',exact:true})});
     await course.locator('summary').filter({hasText:'Browse all weeks'}).click();
     await course.getByRole('link',{name:/Week 1 ·/}).click();
@@ -65,6 +70,8 @@ try {
   await writeFile(portablePath,await sandboxHtml());
   const portable = await browser.newContext();
   const page = await portable.newPage();
+  activePage = page;
+  page.setDefaultTimeout(10000);
   const errors = [];
   page.on('pageerror',error=>errors.push(error.message));
   await portable.setOffline(true);
@@ -82,6 +89,12 @@ try {
   assert.deepEqual(errors,[]);
   await portable.close();
   console.log('PASS portable file: no server, offline, saved notes survive reload');
+} catch (error) {
+  if (activePage && !activePage.isClosed()) {
+    await activePage.screenshot({path:'output/study-browser/failure.png',fullPage:true});
+    console.error('Visible status:',await activePage.locator('.save-status,.sync-state').allTextContents());
+  }
+  throw error;
 } finally {
   await browser?.close();
   await new Promise(resolve=>server.close(resolve));

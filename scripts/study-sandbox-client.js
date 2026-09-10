@@ -46,7 +46,10 @@
     const headers = new Headers(init.headers);
     headers.set('oai-authenticated-user-id', 'study-sandbox');
     headers.set('origin', url.origin);
-    return courseworkApi(new Request(url, {...init, headers}), env, ids);
+    const request = new Request(url, {...init, headers});
+    // Browsers strip forbidden Origin headers from Request objects. This is an
+    // in-process test call, so pass the explicit test headers independently.
+    return courseworkApi({url:request.url,method:request.method,headers,body:request.body}, env, ids);
   };
   const dialog = document.getElementById('sandbox-external');
   document.addEventListener('click', event => {
