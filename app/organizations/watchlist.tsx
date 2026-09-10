@@ -10,6 +10,8 @@ import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { organizationInput, statuses, type Organization } from "../../lib/organizations/model";
 import styles from "./watchlist.module.css";
 
+type WatchlistResponse = { organizations: Organization[]; error?: string };
+
 export default function Watchlist() {
   const [items,setItems] = useState<Organization[]>([]), [loading,setLoading] = useState(true);
   const [error,setError] = useState(""), [saveError,setSaveError] = useState(""), [notice,setNotice] = useState("");
@@ -17,7 +19,7 @@ export default function Watchlist() {
   const [tab,setTab] = useState("following");
   async function load() {
     setLoading(true); setError("");
-    try { const response=await fetch("/api/organizations",{cache:"no-store"}); const data=await response.json(); if(!response.ok) throw Error(data.error); setItems(data.organizations); }
+    try { const response=await fetch("/api/organizations",{cache:"no-store"}); const data=await response.json() as WatchlistResponse; if(!response.ok) throw Error(data.error || "Couldn’t load your watchlist."); setItems(data.organizations); }
     catch(e) { setError(e instanceof Error ? e.message : "Couldn’t load your watchlist."); }
     finally { setLoading(false); }
   }
@@ -37,7 +39,7 @@ export default function Watchlist() {
     setSaving(true);setSaveError("");
     try {
       const response=await fetch("/api/organizations",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(parsed.data)});
-      const data=await response.json();
+      const data=await response.json() as WatchlistResponse;
       if(!response.ok) { if(response.status===409) void load(); throw Error(data.error); }
       setItems(data.organizations);setNotice("Organization saved.");setDraft(null);
     } catch(e) {setSaveError(e instanceof Error?e.message:"Save not confirmed. Your draft is kept; try again.");}
