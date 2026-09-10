@@ -164,3 +164,34 @@ test('Home summarizes saved weeks and the shared shopping list without leaking a
   home=await (await call('/api/home',{headers})).json();assert.equal(home.groceries.packs,5);
   const other=await (await call('/api/home',{headers:{...headers,'oai-authenticated-user-id':'ux-other'}})).json();assert.equal(other.groceries.packs,0);assert.equal(other.study.resume,null);assert.equal(other.vault.count,0);assert.ok(other.study.courses.every(c=>c.week===null));
 });
+
+test('organization watchlist API protects entries and safely persists edits, retries and archives',async()=>{
+  const headers={'oai-authenticated-user-id':'watch-owner','Content-Type':'application/json',origin:'https://life.test'};
+  const read=async(extra={})=>(await (await call('/api/organizations',{headers:{...headers,...extra}})).json()).organizations;
+  const post=(entry,extra={})=>call('/api/organizations',{method:'POST',headers:{...headers,...extra},body:JSON.stringify(entry)});
+  assert.equal((await call('/api/organizations')).status,401);
+  assert.equal((await call('/api/organizations',{method:'POST',body:'{}'})).status,401);
+  let entries=await read();assert.equal(entries.length,2);
+  assert.ok(entries.some(o=>o.name.includes('Basketball')));assert.ok(entries.some(o=>o.name.includes('Erasmus')));
+  const starter=entries[0];
+  assert.equal((await post(starter,{origin:'https://elsewhere.test'})).status,403);
+  assert.equal((await post(starter,{'sec-fetch-site':'cross-site'})).status,403);
+  assert.equal((await post({...starter,url:'javascript:alert(1)'})).status,400);
+  assert.equal((await post({...starter,user_id:'other'})).status,400);
+  const edit={...starter,notes:'Private career notes',status:'Researching',archived:true};
+  assert.equal((await post(edit)).status,200);assert.equal((await post(edit)).status,200,'lost response may be retried');
+  assert.equal((await post({...starter,notes:'Stale edit'})).status,409);
+  entries=await read();let saved=entries.find(o=>o.id===starter.id);
+  assert.equal(saved.archived,true);assert.equal(saved.notes,'Private career notes');assert.equal(saved.version,2);
+  const other=await read({'oai-authenticated-user-id':'watch-other'});
+  assert.ok(!JSON.stringify(other).includes('Private career notes'));assert.ok(other.every(o=>!o.archived));
+  assert.equal((await post({...saved,archived:false})).status,200);
+  const added={...starter,id:crypto.randomUUID(),name:'Disposable organization',version:0};
+  assert.equal((await post(added)).status,200);assert.equal((await post(added)).status,200);
+  assert.equal((await read()).length,3);
+  const original=globalThis.__groceryTestEnv.DB.prepare;
+  globalThis.__groceryTestEnv.DB.prepare=function(sql){if(sql.includes('organization_watchlist'))throw Error('simulated storage failure');return original.call(this,sql);};
+  try {assert.equal((await call('/api/organizations',{headers})).status,503);assert.equal((await post(added)).status,503);}
+  finally {globalThis.__groceryTestEnv.DB.prepare=original;}
+  const page=await call('/organizations',{headers});assert.equal(page.status,200);assert.match(await page.text(),/Organization watchlist/);
+});

@@ -22,3 +22,6 @@
 /* Five shared destinations, including the compact task list. */
 .life-task-todo{grid-column:1/-1}.life-todo-count{font-size:14px;color:var(--muted-foreground);margin-bottom:8px}.life-todo-preview{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:48px;padding:10px 0;text-decoration:none;border-bottom:1px solid var(--border)}.life-todo-preview span{min-width:0;overflow-wrap:anywhere}.life-todo-preview svg{flex-shrink:0;color:var(--muted-foreground)}.life-todo-add{display:flex;gap:8px;align-items:center;margin-top:8px;border-top:0;padding-top:8px;color:var(--primary)}
 @media(min-width:701px) and (max-width:850px){.life-navigation>a{padding:12px 11px}.life-header{gap:18px}}
+
+/* Keep all six module links within the compact desktop header. */
+@media(min-width:701px) and (max-width:1050px){.life-header{gap:20px;padding-inline:3%}.life-navigation{gap:2px}.life-navigation>a{padding-inline:10px;gap:6px}.life-personal{display:none}}
