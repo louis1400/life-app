@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { stripVTControlCharacters } from 'node:util';
 
 // CI owns this server and local database. For interactive work, keep using the
 // normal dev command on 5178; this check deliberately fails if that port is busy.
@@ -21,7 +22,7 @@ try {
   // Wait for our child to announce readiness before making requests, so a
   // different server already on 5178 can never make this check pass.
   const deadline = Date.now() + 60000;
-  while (!output.includes('Local:')) {
+  while (!stripVTControlCharacters(output).includes('Local:')) {
     if (spawnError) throw spawnError;
     if (exited) throw new Error('Development server exited before it was ready.');
     if (Date.now() >= deadline) throw new Error('Development server did not become ready within 60 seconds.');
